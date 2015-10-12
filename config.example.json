@@ -1,0 +1,6 @@
+{
+  "endpoint": "http://author.my-environator.ucms.f2.com.au",
+  "instances": [
+    "i-example",
+  ]
+}

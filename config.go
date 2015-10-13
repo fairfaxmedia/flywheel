@@ -9,8 +9,11 @@ import (
 )
 
 type Config struct {
-	Endpoint  string   `json:"endpoint"`
-	Instances []string `json:"instances"`
+	Vhosts      map[string]string `json:"vhosts"`
+	Endpoint    string            `json:"endpoint"`
+	Instances   []string          `json:"instances"`
+	HcInterval  string            `json:"healthcheck-interval"`
+	IdleTimeout string            `json:"idle-timeout"`
 }
 
 func ReadConfig(filename string) (*Config, error) {

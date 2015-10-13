@@ -176,9 +176,9 @@ func (fw *Flywheel) StartInstances() error {
 	return err
 }
 
-func (fw *Flywheel) StartAutoScaling() error {
+func (fw *Flywheel) UnterminateAutoScaling() error {
 	var err error
-	for groupName, size := range fw.config.AutoScalingGroups {
+	for groupName, size := range fw.config.AutoScaling.Terminate {
 		_, err = fw.autoscaling.UpdateAutoScalingGroup(
 			&autoscaling.UpdateAutoScalingGroupInput{
 				AutoScalingGroupName: &groupName,
@@ -193,10 +193,50 @@ func (fw *Flywheel) StartAutoScaling() error {
 	return nil
 }
 
+func (fw *Flywheel) StartAutoScaling() error {
+	var err error
+	var awsGroupNames []*string
+	for _, groupName := range fw.config.AutoScaling.Stop {
+		awsGroupNames = append(awsGroupNames, &groupName)
+	}
+
+	resp, err := fw.autoscaling.DescribeAutoScalingGroups(
+		&autoscaling.DescribeAutoScalingGroupsInput{
+			AutoScalingGroupNames: awsGroupNames,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	for _, group := range resp.AutoScalingGroups {
+		// NOTE: Processes not unsuspended here. Needs to be triggered after
+		// startup, before entering STARTED state.
+		instanceIds := []*string{}
+		for _, instance:= range group.Instances {
+			instanceIds = append(instanceIds, instance.InstanceId)
+		}
+
+		_, err := fw.ec2.StartInstances(
+			&ec2.StartInstancesInput{
+				InstanceIds: instanceIds,
+			},
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (fw *Flywheel) Stop() {
 	var err error
 	err = fw.StopInstances()
 
+	if err != nil {
+		err = fw.TerminateAutoScaling()
+	}
 	if err != nil {
 		err = fw.StopAutoScaling()
 	}
@@ -220,8 +260,52 @@ func (fw *Flywheel) StopInstances() error {
 
 func (fw *Flywheel) StopAutoScaling() error {
 	var err error
+	var awsGroupNames []*string
+	for _, groupName := range fw.config.AutoScaling.Stop {
+		awsGroupNames = append(awsGroupNames, &groupName)
+	}
+
+	resp, err := fw.autoscaling.DescribeAutoScalingGroups(
+		&autoscaling.DescribeAutoScalingGroupsInput{
+			AutoScalingGroupNames: awsGroupNames,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	for _, group := range resp.AutoScalingGroups {
+		_, err = fw.autoscaling.SuspendProcesses(
+			&autoscaling.ScalingProcessQuery{
+				AutoScalingGroupName: group.AutoScalingGroupName,
+			},
+		)
+		if err != nil {
+			return err
+		}
+
+		instanceIds := []*string{}
+		for _, instance:= range group.Instances {
+			instanceIds = append(instanceIds, instance.InstanceId)
+		}
+
+		_, err := fw.ec2.StopInstances(
+			&ec2.StopInstancesInput{
+				InstanceIds: instanceIds,
+			},
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (fw *Flywheel) TerminateAutoScaling() error {
+	var err error
 	var zero int64
-	for groupName := range fw.config.AutoScalingGroups {
+	for groupName := range fw.config.AutoScaling.Terminate {
 		_, err = fw.autoscaling.UpdateAutoScalingGroup(
 			&autoscaling.UpdateAutoScalingGroupInput{
 				AutoScalingGroupName: &groupName,

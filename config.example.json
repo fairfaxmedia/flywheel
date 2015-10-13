@@ -1,6 +1,14 @@
 {
-  "endpoint": "http://author.my-environator.ucms.f2.com.au",
+  "healthcheck-interval": "1m",
+  "idle-timeout": "3h",
+  "endpoint": "http://akamai-ets.my-environator.ucms.f2.com.au",
+  "vhosts": {
+    "author.my-environator.ucms.f2.com.au": "azcmsdau012a.dynamic.f2.com.au"
+  },
   "instances": [
     "i-example",
-  ]
+  ],
+  "autoscaling": {
+    "ucms-my-environator-publish-ScalingGroup": 1
+  }
 }

@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 )
 
 func (fw *Flywheel) SendPing(start bool) int {
@@ -18,7 +17,7 @@ func (fw *Flywheel) SendPing(start bool) int {
 	return status
 }
 
-func (fw *Flywheel) ProxyEndpoint(hostname) string {
+func (fw *Flywheel) ProxyEndpoint(hostname string) string {
 	vhost, ok := fw.config.Vhosts[hostname]
 	if ok {
 		return vhost
@@ -30,20 +29,16 @@ func (fw *Flywheel) Proxy(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 	r.URL.Query().Del("flywheel")
 
-	endpoint, err := fw.ProxyEndpoint(r.Host)
-	if err != nil {
+	endpoint := fw.ProxyEndpoint(r.Host)
+	if endpoint == "" {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Invalid flywheel endpoint config"))
 		log.Fatal("Invalid endpoint URL")
 	}
 
-	if endpoint.Scheme == "" {
-		r.URL.Scheme = "http"
-	} else {
-		r.URL.Scheme = endpoint.Scheme
-	}
+	r.URL.Scheme = "http"
 
-	r.URL.Host = endpoint.Host
+	r.URL.Host = endpoint
 	r.RequestURI = ""
 	resp, err := client.Do(r)
 	if err != nil {

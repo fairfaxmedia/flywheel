@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"log"
 	"time"
@@ -31,6 +32,7 @@ type Flywheel struct {
 	ready       bool
 	stopAt      time.Time
 	ec2         *ec2.EC2
+	autoscaling *autoscaling.AutoScaling
 	hcInterval  time.Duration
 	idleTimeout time.Duration
 }
@@ -67,13 +69,15 @@ func New(config *Config) *Flywheel {
 		}
 	}
 
+	awsConfig := &aws.Config{Region: &region}
 	return &Flywheel{
 		hcInterval:  hcInterval,
 		idleTimeout: idleTimeout,
 		config:      config,
 		pings:       make(chan Ping),
 		stopAt:      time.Now(),
-		ec2:         ec2.New(&aws.Config{Region: &region}),
+		ec2:         ec2.New(awsConfig),
+		autoscaling: autoscaling.New(awsConfig),
 	}
 }
 
@@ -147,29 +151,87 @@ func (fw *Flywheel) Poll() {
 func (fw *Flywheel) Start() {
 	log.Print("Startup beginning")
 
+	var err error
+	err = fw.StartInstances()
+
+	if err != nil {
+		err = fw.StartAutoScaling()
+	}
+
+	if err != nil {
+		log.Printf("Error starting: %v", err)
+	} else {
+		fw.ready = false
+		fw.stopAt = time.Now().Add(fw.idleTimeout)
+		fw.status = STARTING
+	}
+}
+
+func (fw *Flywheel) StartInstances() error {
 	_, err := fw.ec2.StartInstances(
 		&ec2.StartInstancesInput{
 			InstanceIds: fw.config.AwsInstances(),
 		},
 	)
-	if err != nil {
-		log.Printf("Error starting: %v", err)
-	} else {
-		fw.ready = false
-		fw.status = STARTING
+	return err
+}
+
+func (fw *Flywheel) StartAutoScaling() error {
+	var err error
+	for groupName, size := range fw.config.AutoScalingGroups {
+		_, err = fw.autoscaling.UpdateAutoScalingGroup(
+			&autoscaling.UpdateAutoScalingGroupInput{
+				AutoScalingGroupName: &groupName,
+				MaxSize:              &size,
+				MinSize:              &size,
+			},
+		)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (fw *Flywheel) Stop() {
-	_, err := fw.ec2.StopInstances(
-		&ec2.StopInstancesInput{
-			InstanceIds: fw.config.AwsInstances(),
-		},
-	)
+	var err error
+	err = fw.StopInstances()
+
+	if err != nil {
+		err = fw.StopAutoScaling()
+	}
+
 	if err != nil {
 		log.Printf("Error stopping: %v", err)
 	} else {
 		fw.ready = false
 		fw.status = STOPPING
 	}
+}
+
+func (fw *Flywheel) StopInstances() error {
+	_, err := fw.ec2.StopInstances(
+		&ec2.StopInstancesInput{
+			InstanceIds: fw.config.AwsInstances(),
+		},
+	)
+	return err
+}
+
+func (fw *Flywheel) StopAutoScaling() error {
+	var err error
+	var zero int64
+	for groupName := range fw.config.AutoScalingGroups {
+		_, err = fw.autoscaling.UpdateAutoScalingGroup(
+			&autoscaling.UpdateAutoScalingGroupInput{
+				AutoScalingGroupName: &groupName,
+				MaxSize:              &zero,
+				MinSize:              &zero,
+			},
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

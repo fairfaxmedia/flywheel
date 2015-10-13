@@ -65,6 +65,13 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	flywheel, ok := query["flywheel"]
 	status := fw.SendPing(ok && flywheel[0] == "start")
 
+	if ok {
+		query.Del("flywheel")
+		r.URL.RawQuery = query.Encode()
+		w.Header().Set("Location", r.URL.String())
+		w.WriteHeader(302)
+	}
+
 	switch status {
 	case STOPPED:
 		query.Set("flywheel", "start")

@@ -9,17 +9,17 @@ import (
 )
 
 type Config struct {
-	Vhosts            map[string]string `json:"vhosts"`
-	Endpoint          string            `json:"endpoint"`
-	Instances         []string          `json:"instances"`
-	HcInterval        string            `json:"healthcheck-interval"`
-	IdleTimeout       string            `json:"idle-timeout"`
+	Vhosts      map[string]string `json:"vhosts"`
+	Endpoint    string            `json:"endpoint"`
+	Instances   []string          `json:"instances"`
+	HcInterval  string            `json:"healthcheck-interval"`
+	IdleTimeout string            `json:"idle-timeout"`
 	AutoScaling AutoScalingConfig `json:"autoscaling"`
 }
 
 type AutoScalingConfig struct {
 	Terminate map[string]int64 `json:"terminate"`
-	Stop []string `json:"stop"`
+	Stop      []string         `json:"stop"`
 }
 
 func ReadConfig(filename string) (*Config, error) {

@@ -10,14 +10,6 @@ import (
 
 const SPIN_INTERVAL = 15 * time.Second
 
-const (
-	STOPPED = iota
-	STARTING
-	STARTED
-	STOPPING
-	UNHEALTHY
-)
-
 type Ping struct {
 	replyTo      chan int
 	requestStart bool
@@ -95,7 +87,7 @@ func (fw *Flywheel) Spin() {
 			fw.Poll()
 		case status := <-hchan:
 			if fw.status != status {
-				log.Printf("Healthcheck - status is now %v", status)
+				log.Printf("Healthcheck - status is now %v", StatusString(status))
 				fw.status = status
 			}
 		}
@@ -154,7 +146,10 @@ func (fw *Flywheel) Start() {
 	var err error
 	err = fw.StartInstances()
 
-	if err != nil {
+	if err == nil {
+		err = fw.UnterminateAutoScaling()
+	}
+	if err == nil {
 		err = fw.StartAutoScaling()
 	}
 
@@ -213,7 +208,7 @@ func (fw *Flywheel) StartAutoScaling() error {
 		// NOTE: Processes not unsuspended here. Needs to be triggered after
 		// startup, before entering STARTED state.
 		instanceIds := []*string{}
-		for _, instance:= range group.Instances {
+		for _, instance := range group.Instances {
 			instanceIds = append(instanceIds, instance.InstanceId)
 		}
 
@@ -234,10 +229,10 @@ func (fw *Flywheel) Stop() {
 	var err error
 	err = fw.StopInstances()
 
-	if err != nil {
+	if err == nil {
 		err = fw.TerminateAutoScaling()
 	}
-	if err != nil {
+	if err == nil {
 		err = fw.StopAutoScaling()
 	}
 
@@ -261,6 +256,11 @@ func (fw *Flywheel) StopInstances() error {
 func (fw *Flywheel) StopAutoScaling() error {
 	var err error
 	var awsGroupNames []*string
+
+	if len(fw.config.AutoScaling.Stop) == 0 {
+		return nil
+	}
+
 	for _, groupName := range fw.config.AutoScaling.Stop {
 		awsGroupNames = append(awsGroupNames, &groupName)
 	}
@@ -278,6 +278,9 @@ func (fw *Flywheel) StopAutoScaling() error {
 		_, err = fw.autoscaling.SuspendProcesses(
 			&autoscaling.ScalingProcessQuery{
 				AutoScalingGroupName: group.AutoScalingGroupName,
+				ScalingProcesses: []*string{
+					aws.String("ReplaceUnhealthy"),
+				},
 			},
 		)
 		if err != nil {
@@ -285,7 +288,7 @@ func (fw *Flywheel) StopAutoScaling() error {
 		}
 
 		instanceIds := []*string{}
-		for _, instance:= range group.Instances {
+		for _, instance := range group.Instances {
 			instanceIds = append(instanceIds, instance.InstanceId)
 		}
 

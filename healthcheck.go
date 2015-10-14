@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"log"
@@ -15,6 +16,8 @@ const (
 	UNHEALTHY
 )
 
+// Working with integer statuses is mostly better, but it's
+// occasionally necessary to output the status name.
 func StatusString(n int) string {
 	switch n {
 	case STOPPED:
@@ -70,9 +73,11 @@ func (fw *Flywheel) CheckAll() int {
 
 	switch {
 	case starting && (stopping || shutting):
+		log.Print("Unhealthy: Mix of starting and stopping resources")
 		return UNHEALTHY
 
 	case running && stopped:
+		log.Print("Unhealthy: Mix of running and stopped resources")
 		return UNHEALTHY
 
 	case terminated:
@@ -92,6 +97,7 @@ func (fw *Flywheel) CheckAll() int {
 		return STOPPED
 
 	default:
+		log.Printf("Unhealthy: %v", health)
 		return UNHEALTHY
 	}
 }
@@ -136,6 +142,82 @@ func (fw *Flywheel) CheckStoppedAutoScalingGroups(health map[string]int) error {
 	}
 
 	for _, group := range resp.AutoScalingGroups {
+		running := true
+
+		instanceIds := []*string{}
+		for _, instance := range group.Instances {
+			instanceIds = append(instanceIds, instance.InstanceId)
+		}
+
+		iResp, err := fw.ec2.DescribeInstances(
+			&ec2.DescribeInstancesInput{
+				InstanceIds: instanceIds,
+			},
+		)
+		if err != nil {
+			return err
+		}
+
+		for _, reservation := range iResp.Reservations {
+			for _, instance := range reservation.Instances {
+				state := *instance.State.Name
+				health[state] = health[state] + 1
+				running = running && *instance.State.Name == "running"
+			}
+		}
+
+		if running && len(group.SuspendedProcesses) > 0 {
+			for _, instance := range group.Instances {
+				fw.autoscaling.SetInstanceHealth(
+					&autoscaling.SetInstanceHealthInput{
+						InstanceId: instance.InstanceId,
+						HealthStatus: aws.String("Healthy"),
+					},
+				)
+			}
+
+			_, err = fw.autoscaling.ResumeProcesses(
+				&autoscaling.ScalingProcessQuery{
+					AutoScalingGroupName: group.AutoScalingGroupName,
+				},
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (fw *Flywheel) CheckTerminatedAutoScalingGroups(health map[string]int) error {
+	var err error
+	var awsGroupNames []*string
+
+	for groupName := range fw.config.AutoScaling.Terminate {
+		awsGroupNames = append(awsGroupNames, &groupName)
+	}
+
+	resp, err := fw.autoscaling.DescribeAutoScalingGroups(
+		&autoscaling.DescribeAutoScalingGroupsInput{
+			AutoScalingGroupNames: awsGroupNames,
+		},
+	)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	for _, group := range resp.AutoScalingGroups {
+		if *group.MaxSize == 0 {
+			if len(group.Instances) == 0 {
+				health["stopped"] += 1
+			} else {
+				health["stopping"] += 1
+			}
+			continue
+		}
+
 		healthy := true
 		for _, instance := range group.Instances {
 			if *instance.HealthStatus != "Healthy" {
@@ -157,7 +239,7 @@ func (fw *Flywheel) CheckStoppedAutoScalingGroups(health map[string]int) error {
 				}
 			}
 		} else {
-			health["stopped"] += 1
+			health["starting"] += 1
 		}
 	}
 

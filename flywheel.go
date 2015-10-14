@@ -8,14 +8,26 @@ import (
 	"time"
 )
 
-const SPIN_INTERVAL = 15 * time.Second
+// How often flywheel will update its internal state and/or check for idle
+// timeouts
+const SPIN_INTERVAL = time.Second
 
+// HTTP requests "ping" the flywheel goroutine. This updates the idle timeout,
+// and returns the current status to the http request.
 type Ping struct {
-	replyTo      chan int
+	replyTo      chan Pong
 	requestStart bool
 	requestStop  bool
 }
 
+type Pong struct {
+	Status int
+	Err error
+	LastStarted time.Time
+	LastStopped time.Time
+}
+
+// The Flywheel struct holds all the state required by the flywheel goroutine.
 type Flywheel struct {
 	config      *Config
 	running     bool
@@ -23,6 +35,8 @@ type Flywheel struct {
 	status      int
 	ready       bool
 	stopAt      time.Time
+	lastStarted time.Time
+	lastStopped time.Time
 	ec2         *ec2.EC2
 	autoscaling *autoscaling.AutoScaling
 	hcInterval  time.Duration
@@ -73,6 +87,8 @@ func New(config *Config) *Flywheel {
 	}
 }
 
+// Runs the main loop for the Flywheel.
+// Never returns, so should probably be run as a goroutine.
 func (fw *Flywheel) Spin() {
 	hchan := make(chan int, 1)
 
@@ -94,7 +110,11 @@ func (fw *Flywheel) Spin() {
 	}
 }
 
+// HTTP requests "ping" the flywheel goroutine. This updates the idle timeout,
+// and returns the current status to the http request.
 func (fw *Flywheel) RecvPing(ping *Ping) {
+	var pong Pong
+
 	ch := ping.replyTo
 	defer close(ch)
 
@@ -113,9 +133,15 @@ func (fw *Flywheel) RecvPing(ping *Ping) {
 		}
 	}
 
-	ch <- fw.status
+	pong.Status = fw.status
+	pong.LastStarted = fw.lastStarted
+	pong.LastStopped = fw.lastStopped
+
+	ch <- pong
 }
 
+// The periodic check for starting/stopping state transitions and idle
+// timeouts
 func (fw *Flywheel) Poll() {
 	switch fw.status {
 	case STARTED:
@@ -140,7 +166,9 @@ func (fw *Flywheel) Poll() {
 	}
 }
 
-func (fw *Flywheel) Start() {
+// Start all the resources managed by the flywheel.
+func (fw *Flywheel) Start() error {
+	fw.lastStarted = time.Now()
 	log.Print("Startup beginning")
 
 	var err error
@@ -155,13 +183,16 @@ func (fw *Flywheel) Start() {
 
 	if err != nil {
 		log.Printf("Error starting: %v", err)
-	} else {
-		fw.ready = false
-		fw.stopAt = time.Now().Add(fw.idleTimeout)
-		fw.status = STARTING
+		return err
 	}
+
+	fw.ready = false
+	fw.stopAt = time.Now().Add(fw.idleTimeout)
+	fw.status = STARTING
+	return nil
 }
 
+// Start EC2 instances
 func (fw *Flywheel) StartInstances() error {
 	_, err := fw.ec2.StartInstances(
 		&ec2.StartInstancesInput{
@@ -171,6 +202,7 @@ func (fw *Flywheel) StartInstances() error {
 	return err
 }
 
+// Restore autoscaling group instances
 func (fw *Flywheel) UnterminateAutoScaling() error {
 	var err error
 	for groupName, size := range fw.config.AutoScaling.Terminate {
@@ -188,6 +220,9 @@ func (fw *Flywheel) UnterminateAutoScaling() error {
 	return nil
 }
 
+// Start EC2 instances in a suspended autoscale group
+// @note The autoscale group isn't unsuspended here. It's done by the
+//       healthcheck once all the instances are healthy.
 func (fw *Flywheel) StartAutoScaling() error {
 	var err error
 	var awsGroupNames []*string
@@ -225,7 +260,10 @@ func (fw *Flywheel) StartAutoScaling() error {
 	return nil
 }
 
-func (fw *Flywheel) Stop() {
+// Stop all resources managed by the flywheel
+func (fw *Flywheel) Stop() error {
+	fw.lastStopped = time.Now()
+
 	var err error
 	err = fw.StopInstances()
 
@@ -238,12 +276,15 @@ func (fw *Flywheel) Stop() {
 
 	if err != nil {
 		log.Printf("Error stopping: %v", err)
-	} else {
-		fw.ready = false
-		fw.status = STOPPING
+		return err
 	}
+
+	fw.ready = false
+	fw.status = STOPPING
+	return nil
 }
 
+// Stop EC2 instances
 func (fw *Flywheel) StopInstances() error {
 	_, err := fw.ec2.StopInstances(
 		&ec2.StopInstancesInput{
@@ -253,6 +294,7 @@ func (fw *Flywheel) StopInstances() error {
 	return err
 }
 
+// Suspend ReplaceUnhealthy in an autoscale group and stop the instances.
 func (fw *Flywheel) StopAutoScaling() error {
 	var err error
 	var awsGroupNames []*string
@@ -305,6 +347,7 @@ func (fw *Flywheel) StopAutoScaling() error {
 	return nil
 }
 
+// Reduce autoscaling min/max instances to 0, causing the instances to be terminated.
 func (fw *Flywheel) TerminateAutoScaling() error {
 	var err error
 	var zero int64

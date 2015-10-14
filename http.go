@@ -7,8 +7,8 @@ import (
 	"net/http"
 )
 
-func (fw *Flywheel) SendPing(start bool) int {
-	replyTo := make(chan int, 1)
+func (fw *Flywheel) SendPing(start bool) Pong {
+	replyTo := make(chan Pong, 1)
 	sreq := Ping{replyTo: replyTo, requestStart: start}
 
 	fw.pings <- sreq
@@ -63,26 +63,35 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 	flywheel, ok := query["flywheel"]
-	status := fw.SendPing(ok && flywheel[0] == "start")
+	pong := fw.SendPing(ok && flywheel[0] == "start")
 
 	if ok {
 		query.Del("flywheel")
 		r.URL.RawQuery = query.Encode()
 		w.Header().Set("Location", r.URL.String())
 		w.WriteHeader(302)
+		return
 	}
 
-	switch status {
+	if pong.Err != nil {
+		body := fmt.Sprintf(HTML_ERROR, pong.Err)
+		w.Write([]byte(body))
+		return
+	}
+
+	switch pong.Status {
 	case STOPPED:
 		query.Set("flywheel", "start")
 		r.URL.RawQuery = query.Encode()
-		body := fmt.Sprintf(`<html><body>Currently stopped. <a href="%s">Click here</a> to start.</body></html>`, r.URL)
+		body := fmt.Sprintf(HTML_STOPPED, r.URL)
 		w.Write([]byte(body))
 	case STARTING:
-		w.Write([]byte("Starting environment, please wait\n"))
+		w.Write([]byte(HTML_STARTING))
 	case STARTED:
 		fw.Proxy(w, r)
 	case STOPPING:
-		w.Write([]byte("Shutdown in progress...\n"))
+		w.Write([]byte(HTML_STOPPING))
+	case UNHEALTHY:
+		w.Write([]byte(HTML_UNHEALTHY))
 	}
 }

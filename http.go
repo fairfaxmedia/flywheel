@@ -69,12 +69,13 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query.Del("flywheel")
 		r.URL.RawQuery = query.Encode()
 		w.Header().Set("Location", r.URL.String())
-		w.WriteHeader(302)
+		w.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}
 
 	if pong.Err != nil {
 		body := fmt.Sprintf(HTML_ERROR, pong.Err)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(body))
 		return
 	}
@@ -84,14 +85,18 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		query.Set("flywheel", "start")
 		r.URL.RawQuery = query.Encode()
 		body := fmt.Sprintf(HTML_STOPPED, r.URL)
+		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(body))
 	case STARTING:
+		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(HTML_STARTING))
 	case STARTED:
 		fw.Proxy(w, r)
 	case STOPPING:
+		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(HTML_STOPPING))
 	case UNHEALTHY:
+		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(HTML_UNHEALTHY))
 	}
 }

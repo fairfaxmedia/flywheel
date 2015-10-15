@@ -21,10 +21,11 @@ type Ping struct {
 }
 
 type Pong struct {
-	Status int
-	Err error
-	LastStarted time.Time
-	LastStopped time.Time
+	Status      int       `json:"-"`
+	StatusName  string    `json:"status"`
+	Err         error     `json:"error,omitempty"`
+	LastStarted time.Time `json:"last-started,omitempty"`
+	LastStopped time.Time `json:"last-stopped,omitempty"`
 }
 
 // The Flywheel struct holds all the state required by the flywheel goroutine.
@@ -134,6 +135,7 @@ func (fw *Flywheel) RecvPing(ping *Ping) {
 	}
 
 	pong.Status = fw.status
+	pong.StatusName = StatusString(fw.status)
 	pong.LastStarted = fw.lastStarted
 	pong.LastStopped = fw.lastStopped
 

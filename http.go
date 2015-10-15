@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -65,11 +66,23 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	flywheel, ok := query["flywheel"]
 	pong := fw.SendPing(ok && flywheel[0] == "start")
 
-	if ok {
+	if ok && flywheel[0] == "start" {
 		query.Del("flywheel")
 		r.URL.RawQuery = query.Encode()
 		w.Header().Set("Location", r.URL.String())
 		w.WriteHeader(http.StatusTemporaryRedirect)
+		return
+	}
+
+	if ok && flywheel[0] == "status" {
+		buf, err := json.Marshal(pong)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, err)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(buf)
+		}
 		return
 	}
 

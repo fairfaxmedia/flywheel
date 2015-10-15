@@ -39,4 +39,3 @@ const HTML_ERROR = `
 			<p>An error occured processing your request: %v</p>
 		</body>
 	</html>`
-

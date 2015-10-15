@@ -170,7 +170,7 @@ func (fw *Flywheel) CheckStoppedAutoScalingGroups(health map[string]int) error {
 			for _, instance := range group.Instances {
 				fw.autoscaling.SetInstanceHealth(
 					&autoscaling.SetInstanceHealthInput{
-						InstanceId: instance.InstanceId,
+						InstanceId:   instance.InstanceId,
 						HealthStatus: aws.String("Healthy"),
 					},
 				)

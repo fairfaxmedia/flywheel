@@ -15,8 +15,12 @@ click here to start" style page.
 
 ## How to use
 
-You will need to create a JSON configuration file for flywheel, with the
-following parameters:
+You will need to create a JSON configuration file for flywheel, see the
+Configuration section.
+
+Then start the server: `flywheel --config my-config.json --listen 0.0.0.0:80`
+
+## Configuration
 
 `idle-timeout` (string) How long after last request before powering down. Uses golang duration format, e.g. 1d2h3m
 `healthcheck-interval` (string) How often to poll the AWS SDK. Used to detect stopped/started. Uses golang duration format, e.g. 1d2h3m
@@ -51,3 +55,4 @@ Example:
   }
 }
 ```
+

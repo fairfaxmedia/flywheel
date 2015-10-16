@@ -14,6 +14,11 @@ const HTML_STOPPED = `
 
 const HTML_STARTING = `
 	<html>
+		<script>
+			setTimeout(function() {
+				window.location.reload(1);
+			}, 5000);
+		</script>
 		<body>
 			<p>Your service is starting, please wait.</p>
 		</body>
@@ -21,6 +26,11 @@ const HTML_STARTING = `
 
 const HTML_STOPPING = `
 	<html>
+		<script>
+			setTimeout(function() {
+				window.location.reload(1);
+			}, 5000);
+		</script>
 		<body>
 			<p>The instances for this service are being powered down.</p>
 		</body>

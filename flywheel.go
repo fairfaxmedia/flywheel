@@ -105,6 +105,10 @@ func (fw *Flywheel) Spin() {
 		case status := <-hchan:
 			if fw.status != status {
 				log.Printf("Healthcheck - status is now %v", StatusString(status))
+				if status == STARTED {
+					fw.stopAt = time.Now().Add(fw.idleTimeout)
+					log.Printf("Timer update. Stop scheduled for %v", fw.stopAt)
+				}
 				fw.status = status
 			}
 		}

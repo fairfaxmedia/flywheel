@@ -44,7 +44,7 @@ func readStatusFile(statusFile string) *Pong {
 func writeStatusFile(statusFile string, flywheel *Flywheel) {
 	var pong Pong
 
-	fd, err := os.OpenFile(statusFile, os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
+	fd, err := os.OpenFile(statusFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Print("Unable to write status file: %v", err)
 		return

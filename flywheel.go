@@ -295,6 +295,9 @@ func (fw *Flywheel) Stop() error {
 
 // Stop EC2 instances
 func (fw *Flywheel) StopInstances() error {
+	if len(fw.config.Instances) == 0 {
+		return nil
+	}
 	_, err := fw.ec2.StopInstances(
 		&ec2.StopInstancesInput{
 			InstanceIds: fw.config.AwsInstances(),

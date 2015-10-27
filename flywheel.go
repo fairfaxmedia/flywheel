@@ -18,6 +18,7 @@ type Ping struct {
 	replyTo      chan Pong
 	requestStart bool
 	requestStop  bool
+	noop         bool
 }
 
 type Pong struct {
@@ -132,6 +133,8 @@ func (fw *Flywheel) RecvPing(ping *Ping) {
 	case STARTED:
 		if ping.requestStop {
 			fw.Stop()
+		} else if ping.noop {
+			// Status requests, etc. Don't update idle timer
 		} else {
 			fw.stopAt = time.Now().Add(fw.idleTimeout)
 			log.Printf("Timer update. Stop scheduled for %v", fw.stopAt)

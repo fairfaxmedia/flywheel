@@ -8,9 +8,17 @@ import (
 	"net/http"
 )
 
-func (fw *Flywheel) SendPing(start bool) Pong {
+func (fw *Flywheel) SendPing(op string) Pong {
 	replyTo := make(chan Pong, 1)
-	sreq := Ping{replyTo: replyTo, requestStart: start}
+	sreq := Ping{replyTo: replyTo}
+	switch op {
+	case "start":
+		sreq.requestStart = true
+	case "stop":
+		sreq.requestStop = true
+	case "status":
+		sreq.noop = true
+	}
 
 	fw.pings <- sreq
 
@@ -64,7 +72,7 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 	flywheel, ok := query["flywheel"]
-	pong := fw.SendPing(ok && flywheel[0] == "start")
+	pong := fw.SendPing(query.Get("flywheel"))
 
 	if ok && flywheel[0] == "start" {
 		query.Del("flywheel")

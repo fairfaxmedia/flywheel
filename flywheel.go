@@ -127,12 +127,12 @@ func (fw *Flywheel) RecvPing(ping *Ping) {
 	switch fw.status {
 	case STOPPED:
 		if ping.requestStart {
-			fw.Start()
+			pong.Err = fw.Start()
 		}
 
 	case STARTED:
 		if ping.requestStop {
-			fw.Stop()
+			pong.Err = fw.Stop()
 		} else if ping.noop {
 			// Status requests, etc. Don't update idle timer
 		} else {

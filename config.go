@@ -59,7 +59,7 @@ func (c *Config) EndpointURL() (*url.URL, error) {
 }
 
 func (c *Config) Validate() error {
-	if len(c.Instances) == 0 {
+	if len(c.Instances) == 0 && len(c.AutoScaling.Stop) == 0 && len(c.AutoScaling.Terminate) == 0 {
 		return fmt.Errorf("No instances configured")
 	}
 

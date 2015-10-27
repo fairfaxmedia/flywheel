@@ -71,10 +71,10 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[%s] %s %s", r.RemoteAddr, r.Method, r.RequestURI)
 
 	query := r.URL.Query()
-	flywheel, ok := query["flywheel"]
+	flywheel := query.Get("flywheel")
 	pong := fw.SendPing(query.Get("flywheel"))
 
-	if ok && flywheel[0] == "start" {
+	if flywheel == "start" {
 		query.Del("flywheel")
 		r.URL.RawQuery = query.Encode()
 		w.Header().Set("Location", r.URL.String())
@@ -82,7 +82,7 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if ok && flywheel[0] == "status" {
+	if flywheel != "" {
 		buf, err := json.Marshal(pong)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

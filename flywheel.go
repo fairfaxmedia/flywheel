@@ -203,6 +203,9 @@ func (fw *Flywheel) Start() error {
 
 // Start EC2 instances
 func (fw *Flywheel) StartInstances() error {
+	if len(fw.config.Instances) == 0 {
+		return nil
+	}
 	_, err := fw.ec2.StartInstances(
 		&ec2.StartInstancesInput{
 			InstanceIds: fw.config.AwsInstances(),

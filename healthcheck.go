@@ -103,6 +103,9 @@ func (fw *Flywheel) CheckAll() int {
 }
 
 func (fw *Flywheel) CheckInstances(health map[string]int) error {
+	if len(fw.config.Instances) == 0 {
+		return nil
+	}
 	resp, err := fw.ec2.DescribeInstances(
 		&ec2.DescribeInstancesInput{
 			InstanceIds: fw.config.AwsInstances(),

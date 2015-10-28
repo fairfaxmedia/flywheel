@@ -254,6 +254,14 @@ func (fw *Flywheel) StartAutoScaling() error {
 		return err
 	}
 
+	if len(resp.AutoScalingGroups) != len(fw.config.AutoScaling.Stop) {
+		log.Printf(
+			"Warning: Only found %d of %d autoscaling groups",
+			len(resp.AutoScalingGroups),
+			len(fw.config.AutoScaling.Stop),
+		)
+	}
+
 	for _, group := range resp.AutoScalingGroups {
 		log.Printf("Starting autoscaling group %s", *group.AutoScalingGroupName)
 		// NOTE: Processes not unsuspended here. Needs to be triggered after
@@ -330,6 +338,14 @@ func (fw *Flywheel) StopAutoScaling() error {
 	)
 	if err != nil {
 		return err
+	}
+
+	if len(resp.AutoScalingGroups) != len(fw.config.AutoScaling.Stop) {
+		log.Printf(
+			"Warning: Only found %d of %d autoscaling groups",
+			len(resp.AutoScalingGroups),
+			len(fw.config.AutoScaling.Stop),
+		)
 	}
 
 	for _, group := range resp.AutoScalingGroups {

@@ -206,6 +206,7 @@ func (fw *Flywheel) StartInstances() error {
 	if len(fw.config.Instances) == 0 {
 		return nil
 	}
+	log.Printf("Starting instances %v", fw.config.Instances)
 	_, err := fw.ec2.StartInstances(
 		&ec2.StartInstancesInput{
 			InstanceIds: fw.config.AwsInstances(),
@@ -218,6 +219,7 @@ func (fw *Flywheel) StartInstances() error {
 func (fw *Flywheel) UnterminateAutoScaling() error {
 	var err error
 	for groupName, size := range fw.config.AutoScaling.Terminate {
+		log.Printf("Restoring autoscaling group %s", groupName)
 		_, err = fw.autoscaling.UpdateAutoScalingGroup(
 			&autoscaling.UpdateAutoScalingGroupInput{
 				AutoScalingGroupName: &groupName,
@@ -252,6 +254,7 @@ func (fw *Flywheel) StartAutoScaling() error {
 	}
 
 	for _, group := range resp.AutoScalingGroups {
+		log.Printf("Starting autoscaling group %s", group.AutoScalingGroupName)
 		// NOTE: Processes not unsuspended here. Needs to be triggered after
 		// startup, before entering STARTED state.
 		instanceIds := []*string{}
@@ -301,6 +304,7 @@ func (fw *Flywheel) StopInstances() error {
 	if len(fw.config.Instances) == 0 {
 		return nil
 	}
+	log.Printf("Stopping instances %v", fw.config.Instances)
 	_, err := fw.ec2.StopInstances(
 		&ec2.StopInstancesInput{
 			InstanceIds: fw.config.AwsInstances(),
@@ -332,6 +336,8 @@ func (fw *Flywheel) StopAutoScaling() error {
 	}
 
 	for _, group := range resp.AutoScalingGroups {
+		log.Printf("Stopping autoscaling group %s", group.AutoScalingGroupName)
+
 		_, err = fw.autoscaling.SuspendProcesses(
 			&autoscaling.ScalingProcessQuery{
 				AutoScalingGroupName: group.AutoScalingGroupName,
@@ -367,6 +373,7 @@ func (fw *Flywheel) TerminateAutoScaling() error {
 	var err error
 	var zero int64
 	for groupName := range fw.config.AutoScaling.Terminate {
+		log.Printf("Terminating autoscaling group %s", groupName)
 		_, err = fw.autoscaling.UpdateAutoScalingGroup(
 			&autoscaling.UpdateAutoScalingGroupInput{
 				AutoScalingGroupName: &groupName,

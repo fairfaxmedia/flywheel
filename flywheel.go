@@ -238,8 +238,6 @@ func (fw *Flywheel) UnterminateAutoScaling() error {
 // @note The autoscale group isn't unsuspended here. It's done by the
 //       healthcheck once all the instances are healthy.
 func (fw *Flywheel) StartAutoScaling() error {
-	var err error
-
 	for _, groupName := range fw.config.AutoScaling.Stop {
 		log.Printf("Starting autoscaling group %s", groupName)
 
@@ -312,8 +310,6 @@ func (fw *Flywheel) StopInstances() error {
 
 // Suspend ReplaceUnhealthy in an autoscale group and stop the instances.
 func (fw *Flywheel) StopAutoScaling() error {
-	var err error
-
 	for _, groupName := range fw.config.AutoScaling.Stop {
 		log.Printf("Stopping autoscaling group %s", groupName)
 

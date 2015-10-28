@@ -254,7 +254,7 @@ func (fw *Flywheel) StartAutoScaling() error {
 	}
 
 	for _, group := range resp.AutoScalingGroups {
-		log.Printf("Starting autoscaling group %s", group.AutoScalingGroupName)
+		log.Printf("Starting autoscaling group %s", *group.AutoScalingGroupName)
 		// NOTE: Processes not unsuspended here. Needs to be triggered after
 		// startup, before entering STARTED state.
 		instanceIds := []*string{}
@@ -336,7 +336,7 @@ func (fw *Flywheel) StopAutoScaling() error {
 	}
 
 	for _, group := range resp.AutoScalingGroups {
-		log.Printf("Stopping autoscaling group %s", group.AutoScalingGroupName)
+		log.Printf("Stopping autoscaling group %s", *group.AutoScalingGroupName)
 
 		_, err = fw.autoscaling.SuspendProcesses(
 			&autoscaling.ScalingProcessQuery{

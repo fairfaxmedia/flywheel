@@ -239,9 +239,10 @@ func (fw *Flywheel) UnterminateAutoScaling() error {
 //       healthcheck once all the instances are healthy.
 func (fw *Flywheel) StartAutoScaling() error {
 	var err error
-	var awsGroupNames []*string
-	for _, groupName := range fw.config.AutoScaling.Stop {
-		awsGroupNames = append(awsGroupNames, &groupName)
+
+	awsGroupNames := make([]*string, len(fw.config.AutoScaling.Stop))
+	for i, groupName := range fw.config.AutoScaling.Stop {
+		awsGroupNames[i] = &groupName
 	}
 
 	resp, err := fw.autoscaling.DescribeAutoScalingGroups(
@@ -316,14 +317,10 @@ func (fw *Flywheel) StopInstances() error {
 // Suspend ReplaceUnhealthy in an autoscale group and stop the instances.
 func (fw *Flywheel) StopAutoScaling() error {
 	var err error
-	var awsGroupNames []*string
 
-	if len(fw.config.AutoScaling.Stop) == 0 {
-		return nil
-	}
-
-	for _, groupName := range fw.config.AutoScaling.Stop {
-		awsGroupNames = append(awsGroupNames, &groupName)
+	awsGroupNames := make([]*string, len(fw.config.AutoScaling.Stop))
+	for i, groupName := range fw.config.AutoScaling.Stop {
+		awsGroupNames[i] = &groupName
 	}
 
 	resp, err := fw.autoscaling.DescribeAutoScalingGroups(

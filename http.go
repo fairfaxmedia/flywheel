@@ -72,6 +72,19 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 	flywheel := query.Get("flywheel")
+
+	if flywheel == "config" {
+		buf, err := json.Marshal(fw.config) // Might be unsafe, but this should be read only.
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, err)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(buf)
+		}
+		return
+	}
+
 	pong := fw.SendPing(query.Get("flywheel"))
 
 	if flywheel == "start" {

@@ -87,6 +87,13 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, err)
+		} else if flywheel != "status" {
+			query.Del("flywheel")
+			r.URL.RawQuery = query.Encode()
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Location", r.URL.String())
+			w.WriteHeader(http.StatusTemporaryRedirect)
+			w.Write(buf)
 		} else {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(buf)

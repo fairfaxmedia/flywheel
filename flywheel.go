@@ -240,38 +240,26 @@ func (fw *Flywheel) UnterminateAutoScaling() error {
 func (fw *Flywheel) StartAutoScaling() error {
 	var err error
 
-	awsGroupNames := make([]*string, len(fw.config.AutoScaling.Stop))
-	for i, groupName := range fw.config.AutoScaling.Stop {
-		awsGroupNames[i] = &groupName
-	}
+	for _, groupName := range fw.config.AutoScaling.Stop {
+		log.Printf("Starting autoscaling group %s", groupName)
 
-	resp, err := fw.autoscaling.DescribeAutoScalingGroups(
-		&autoscaling.DescribeAutoScalingGroupsInput{
-			AutoScalingGroupNames: awsGroupNames,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	if len(resp.AutoScalingGroups) != len(fw.config.AutoScaling.Stop) {
-		log.Printf(
-			"Warning: Only found %d of %d autoscaling groups",
-			len(resp.AutoScalingGroups),
-			len(fw.config.AutoScaling.Stop),
+		resp, err := fw.autoscaling.DescribeAutoScalingGroups(
+			&autoscaling.DescribeAutoScalingGroupsInput{
+				AutoScalingGroupNames: []*string{&groupName},
+			},
 		)
-	}
+		if err != nil {
+			return err
+		}
 
-	for _, group := range resp.AutoScalingGroups {
-		log.Printf("Starting autoscaling group %s", *group.AutoScalingGroupName)
-		// NOTE: Processes not unsuspended here. Needs to be triggered after
-		// startup, before entering STARTED state.
+		group := resp.AutoScalingGroups[0]
+
 		instanceIds := []*string{}
 		for _, instance := range group.Instances {
 			instanceIds = append(instanceIds, instance.InstanceId)
 		}
 
-		_, err := fw.ec2.StartInstances(
+		_, err = fw.ec2.StartInstances(
 			&ec2.StartInstancesInput{
 				InstanceIds: instanceIds,
 			},
@@ -326,30 +314,19 @@ func (fw *Flywheel) StopInstances() error {
 func (fw *Flywheel) StopAutoScaling() error {
 	var err error
 
-	awsGroupNames := make([]*string, len(fw.config.AutoScaling.Stop))
-	for i, groupName := range fw.config.AutoScaling.Stop {
-		awsGroupNames[i] = &groupName
-	}
+	for _, groupName := range fw.config.AutoScaling.Stop {
+		log.Printf("Stopping autoscaling group %s", groupName)
 
-	resp, err := fw.autoscaling.DescribeAutoScalingGroups(
-		&autoscaling.DescribeAutoScalingGroupsInput{
-			AutoScalingGroupNames: awsGroupNames,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	if len(resp.AutoScalingGroups) != len(fw.config.AutoScaling.Stop) {
-		log.Printf(
-			"Warning: Only found %d of %d autoscaling groups",
-			len(resp.AutoScalingGroups),
-			len(fw.config.AutoScaling.Stop),
+		resp, err := fw.autoscaling.DescribeAutoScalingGroups(
+			&autoscaling.DescribeAutoScalingGroupsInput{
+				AutoScalingGroupNames: []*string{&groupName},
+			},
 		)
-	}
+		if err != nil {
+			return err
+		}
 
-	for _, group := range resp.AutoScalingGroups {
-		log.Printf("Stopping autoscaling group %s", *group.AutoScalingGroupName)
+		group := resp.AutoScalingGroups[0]
 
 		_, err = fw.autoscaling.SuspendProcesses(
 			&autoscaling.ScalingProcessQuery{
@@ -368,7 +345,7 @@ func (fw *Flywheel) StopAutoScaling() error {
 			instanceIds = append(instanceIds, instance.InstanceId)
 		}
 
-		_, err := fw.ec2.StopInstances(
+		_, err = fw.ec2.StopInstances(
 			&ec2.StopInstancesInput{
 				InstanceIds: instanceIds,
 			},

@@ -27,6 +27,7 @@ type Pong struct {
 	Err         error     `json:"error,omitempty"`
 	LastStarted time.Time `json:"last-started,omitempty"`
 	LastStopped time.Time `json:"last-stopped,omitempty"`
+	StopAt      time.Time `json:"stop-due-at"`
 }
 
 // The Flywheel struct holds all the state required by the flywheel goroutine.
@@ -145,6 +146,7 @@ func (fw *Flywheel) RecvPing(ping *Ping) {
 	pong.StatusName = StatusString(fw.status)
 	pong.LastStarted = fw.lastStarted
 	pong.LastStopped = fw.lastStopped
+	pong.StopAt = fw.stopAt
 
 	ch <- pong
 }

@@ -5,8 +5,12 @@ import (
 	"flag"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/user"
+	"strconv"
+	"syscall"
 )
 
 func readStatusFile(statusFile string) *Pong {
@@ -76,11 +80,34 @@ func main() {
 	var listen string
 	var configFile string
 	var statusFile string
+	var setuid string
 
 	flag.StringVar(&listen, "listen", "0.0.0.0:80", "Address and port to listen on")
 	flag.StringVar(&configFile, "config", "", "Config file to read settings from")
 	flag.StringVar(&statusFile, "status-file", "", "File to save runtime status to")
+	flag.StringVar(&setuid, "setuid", "", "Switch to user after opening socket")
 	flag.Parse()
+
+	sock, err := net.Listen("tcp", listen)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if setuid != "" {
+		user, err := user.Lookup(setuid)
+		if err != nil {
+			log.Fatal(err)
+		}
+		uid, err := strconv.ParseInt(user.Uid, 10, 64)
+		if err != nil {
+			log.Fatalf("Invalid uid (%s: %s): %v", setuid, user.Uid, err)
+		}
+
+		err = syscall.Setuid(int(uid))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	if configFile != "" {
 		config, err = ReadConfig(configFile)
@@ -106,7 +133,7 @@ func main() {
 	http.Handle("/", flywheel)
 
 	log.Print("Flywheel starting")
-	err = http.ListenAndServe(listen, nil)
+	err = http.Serve(sock, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

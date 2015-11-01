@@ -107,7 +107,10 @@ func (fw *Flywheel) Spin() {
 		case status := <-hchan:
 			if fw.status != status {
 				log.Printf("Healthcheck - status is now %v", StatusString(status))
-				if status == STARTED {
+				// Status may change from STARTED to UNHEALTHY to STARTED due
+				// to things like AWS RequestLimitExceeded errors.
+				// If there is an active timeout, keep it instead of resetting.
+				if status == STARTED && fw.stopAt.Before(time.Now()) {
 					fw.stopAt = time.Now().Add(fw.idleTimeout)
 					log.Printf("Timer update. Stop scheduled for %v", fw.stopAt)
 				}
@@ -293,6 +296,7 @@ func (fw *Flywheel) Stop() error {
 
 	fw.ready = false
 	fw.status = STOPPING
+	fw.stopAt = fw.lastStopped
 	return nil
 }
 

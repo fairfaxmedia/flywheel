@@ -7,9 +7,15 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"text/template"
 )
 
-func (fw *Flywheel) SendPing(op string) Pong {
+type Handler struct {
+	flywheel *Flywheel
+	tmpl     *template.Template
+}
+
+func (handler *Handler) SendPing(op string) Pong {
 	replyTo := make(chan Pong, 1)
 	sreq := Ping{replyTo: replyTo}
 	switch op {
@@ -21,25 +27,17 @@ func (fw *Flywheel) SendPing(op string) Pong {
 		sreq.noop = true
 	}
 
-	fw.pings <- sreq
+	handler.flywheel.pings <- sreq
 
 	status := <-replyTo
 	return status
 }
 
-func (fw *Flywheel) ProxyEndpoint(hostname string) string {
-	vhost, ok := fw.config.Vhosts[hostname]
-	if ok {
-		return vhost
-	}
-	return fw.config.Endpoint
-}
-
-func (fw *Flywheel) Proxy(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) Proxy(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 	r.URL.Query().Del("flywheel")
 
-	endpoint := fw.ProxyEndpoint(r.Host)
+	endpoint := handler.flywheel.ProxyEndpoint(r.Host)
 	if endpoint == "" {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Invalid flywheel endpoint config"))
@@ -68,14 +66,14 @@ func (fw *Flywheel) Proxy(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[%s] %s %s", r.RemoteAddr, r.Method, r.RequestURI)
 
 	query := r.URL.Query()
-	flywheel := query.Get("flywheel")
+	param := query.Get("flywheel")
 
-	if flywheel == "config" {
-		buf, err := json.Marshal(fw.config) // Might be unsafe, but this should be read only.
+	if param == "config" {
+		buf, err := json.Marshal(handler.flywheel.config) // Might be unsafe, but this should be read only.
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, err)
@@ -86,9 +84,9 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pong := fw.SendPing(query.Get("flywheel"))
+	pong := handler.SendPing(query.Get("flywheel"))
 
-	if flywheel == "start" {
+	if param == "start" {
 		query.Del("flywheel")
 		r.URL.RawQuery = query.Encode()
 		w.Header().Set("Location", r.URL.String())
@@ -106,12 +104,12 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if flywheel != "" {
+	if param != "" {
 		buf, err := json.Marshal(pong)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, err)
-		} else if flywheel != "status" {
+		} else if param != "status" {
 			query.Del("flywheel")
 			r.URL.RawQuery = query.Encode()
 			w.Header().Set("Content-Type", "application/json")
@@ -145,7 +143,7 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(HTML_STARTING))
 	case STARTED:
-		fw.Proxy(w, r)
+		handler.Proxy(w, r)
 	case STOPPING:
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(HTML_STOPPING))

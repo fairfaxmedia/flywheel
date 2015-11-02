@@ -90,6 +90,14 @@ func New(config *Config) *Flywheel {
 	}
 }
 
+func (fw *Flywheel) ProxyEndpoint(hostname string) string {
+	vhost, ok := fw.config.Vhosts[hostname]
+	if ok {
+		return vhost
+	}
+	return fw.config.Endpoint
+}
+
 // Runs the main loop for the Flywheel.
 // Never returns, so should probably be run as a goroutine.
 func (fw *Flywheel) Spin() {

@@ -130,7 +130,11 @@ func main() {
 
 	go flywheel.Spin()
 
-	http.Handle("/", flywheel)
+	handler := &Handler{
+		flywheel: flywheel,
+	}
+
+	http.Handle("/", handler)
 
 	log.Print("Flywheel starting")
 	err = http.Serve(sock, nil)

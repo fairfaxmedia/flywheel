@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func (fw *Flywheel) SendPing(op string) Pong {

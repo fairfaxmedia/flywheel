@@ -95,6 +95,16 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	accept := query.Get("Accept")
+	var acceptHtml bool
+	if accept != "" {
+		htmlIndex := strings.Index(accept, "text/html")
+		jsonIndex := strings.Index(accept, "application/json")
+		if htmlIndex != -1 {
+			acceptHtml = jsonIndex == -1 || htmlIndex < jsonIndex
+		}
+	}
+
 	if flywheel != "" {
 		buf, err := json.Marshal(pong)
 		if err != nil {
@@ -104,8 +114,10 @@ func (fw *Flywheel) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			query.Del("flywheel")
 			r.URL.RawQuery = query.Encode()
 			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Location", r.URL.String())
-			w.WriteHeader(http.StatusTemporaryRedirect)
+			if acceptHtml {
+				w.Header().Set("Location", r.URL.String())
+				w.WriteHeader(http.StatusTemporaryRedirect)
+			}
 			w.Write(buf)
 		} else {
 			w.Header().Set("Content-Type", "application/json")

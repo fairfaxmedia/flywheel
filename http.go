@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"text/template"
+	"time"
 )
 
 type Handler struct {
@@ -16,6 +17,8 @@ type Handler struct {
 }
 
 func (handler *Handler) SendPing(op string) Pong {
+	var err error
+
 	replyTo := make(chan Pong, 1)
 	sreq := Ping{replyTo: replyTo}
 	switch op {
@@ -26,10 +29,20 @@ func (handler *Handler) SendPing(op string) Pong {
 	case "status":
 		sreq.noop = true
 	}
+	if strings.HasPrefix(op, "stop_in:") {
+		suffix := op[8:]
+		dur, e := time.ParseDuration(suffix)
+		if e != nil {
+			err = e
+		}
+		sreq.setTimeout = dur
+	}
 
 	handler.flywheel.pings <- sreq
-
 	status := <-replyTo
+	if err != nil && status.Err == nil {
+		status.Err = err
+	}
 	return status
 }
 

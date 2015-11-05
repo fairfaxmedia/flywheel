@@ -16,6 +16,7 @@ const SPIN_INTERVAL = time.Second
 // and returns the current status to the http request.
 type Ping struct {
 	replyTo      chan Pong
+	setTimeout   time.Duration
 	requestStart bool
 	requestStop  bool
 	noop         bool
@@ -143,10 +144,13 @@ func (fw *Flywheel) RecvPing(ping *Ping) {
 		}
 
 	case STARTED:
-		if ping.requestStop {
-			pong.Err = fw.Stop()
-		} else if ping.noop {
+		if ping.noop {
 			// Status requests, etc. Don't update idle timer
+		} else if ping.requestStop {
+			pong.Err = fw.Stop()
+		} else if int64(ping.setTimeout) != 0 {
+			fw.stopAt = time.Now().Add(ping.setTimeout)
+			log.Printf("Timer update. Stop scheduled for %v", fw.stopAt)
 		} else {
 			fw.stopAt = time.Now().Add(fw.idleTimeout)
 			log.Printf("Timer update. Stop scheduled for %v", fw.stopAt)

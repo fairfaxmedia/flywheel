@@ -1,6 +1,0 @@
-name: "Flywheel"
-type: "service"
-description: "Cost control proxy. Powers down instances when idle."
-team: "CQ Tools"
-emails:
- - "david.baggerman@fairfaxmedia.com.au"

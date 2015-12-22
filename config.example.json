@@ -6,7 +6,7 @@
     "author.my-environator.ucms.f2.com.au": "azcmsdau012a.dynamic.f2.com.au"
   },
   "instances": [
-    "i-example",
+    "i-example"
   ],
   "autoscaling": {
     "ucms-my-environator-publish-ScalingGroup": 1

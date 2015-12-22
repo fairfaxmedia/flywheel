@@ -9,9 +9,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"os/user"
 	"strconv"
 	"syscall"
+	"time"
 )
 
 func readStatusFile(statusFile string) *Pong {
@@ -140,9 +142,18 @@ func main() {
 
 	http.Handle("/", handler)
 
-	log.Print("Flywheel starting")
-	err = http.Serve(sock, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	go func() {
+		log.Print("Flywheel starting")
+		err = http.Serve(sock, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	ch := make(chan os.Signal, 2)
+	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
+	<-ch
+	sock.Close()
+	log.Print("Stopping flywheel...")
+	time.Sleep(3 * time.Second)
 }

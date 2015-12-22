@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -109,11 +110,14 @@ func main() {
 		}
 	}
 
-	if configFile != "" {
-		config, err = ReadConfig(configFile)
-		if err != nil {
-			log.Fatal(err)
-		}
+	if configFile == "" {
+		fmt.Println("Config file missing. Please run with -help for more info")
+		os.Exit(2)
+	}
+
+	config, err = ReadConfig(configFile)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	flywheel := New(config)

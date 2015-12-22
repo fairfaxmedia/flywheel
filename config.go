@@ -1,25 +1,37 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
+	"time"
 )
 
 type Config struct {
 	Vhosts      map[string]string `json:"vhosts"`
 	Endpoint    string            `json:"endpoint"`
 	Instances   []string          `json:"instances"`
-	HcInterval  string            `json:"healthcheck-interval"`
-	IdleTimeout string            `json:"idle-timeout"`
+	HcInterval  Duration          `json:"healthcheck-interval"`
+	IdleTimeout Duration          `json:"idle-timeout"`
 	AutoScaling AutoScalingConfig `json:"autoscaling"`
 }
 
 type AutoScalingConfig struct {
 	Terminate map[string]int64 `json:"terminate"`
 	Stop      []string         `json:"stop"`
+}
+
+type Duration time.Duration
+
+func (d *Duration) UnmarshalText(b []byte) error {
+	v, err := time.ParseDuration(string(b))
+	if err != nil {
+		return err
+	}
+	*d = Duration(v)
+	return nil
 }
 
 func ReadConfig(filename string) (*Config, error) {
@@ -29,11 +41,13 @@ func ReadConfig(filename string) (*Config, error) {
 	}
 	defer fd.Close()
 
-	buf := bytes.Buffer{}
-	buf.ReadFrom(fd)
+	in, err := ioutil.ReadAll(fd)
+	if err != nil {
+		return nil, err
+	}
 
 	cfg := &Config{}
-	err = json.Unmarshal(buf.Bytes(), cfg)
+	err = json.Unmarshal(in, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("Could not decode json: %v", err)
 	}
@@ -67,5 +81,12 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("No endpoint configured")
 	}
 
+	if c.HcInterval <= 0 {
+		c.HcInterval = Duration(time.Minute)
+	}
+
+	if c.IdleTimeout <= 0 {
+		c.IdleTimeout = Duration(time.Minute)
+	}
 	return nil
 }

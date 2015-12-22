@@ -50,39 +50,10 @@ type Flywheel struct {
 func New(config *Config) *Flywheel {
 	region := "ap-southeast-2"
 
-	var hcInterval time.Duration
-	var idleTimeout time.Duration
-
-	s := config.HcInterval
-	if s == "" {
-		hcInterval = time.Minute
-	} else {
-		d, err := time.ParseDuration(s)
-		if err != nil {
-			log.Printf("Invalid duration: %v", err)
-			hcInterval = time.Minute
-		} else {
-			hcInterval = d
-		}
-	}
-
-	s = config.IdleTimeout
-	if s == "" {
-		idleTimeout = time.Minute
-	} else {
-		d, err := time.ParseDuration(s)
-		if err != nil {
-			log.Printf("Invalid duration: %v", err)
-			idleTimeout = time.Minute
-		} else {
-			idleTimeout = d
-		}
-	}
-
 	awsConfig := &aws.Config{Region: &region}
 	return &Flywheel{
-		hcInterval:  hcInterval,
-		idleTimeout: idleTimeout,
+		hcInterval:  time.Duration(config.HcInterval),
+		idleTimeout: time.Duration(config.IdleTimeout),
 		config:      config,
 		pings:       make(chan Ping),
 		stopAt:      time.Now(),

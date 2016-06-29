@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -113,8 +112,7 @@ func main() {
 	}
 
 	if configFile == "" {
-		fmt.Println("Config file missing. Please run with -help for more info")
-		os.Exit(2)
+		log.Fatal("Config file missing. Please run with -help for more info")
 	}
 
 	config, err = ReadConfig(configFile)

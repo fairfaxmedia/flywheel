@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -41,23 +42,29 @@ func ReadConfig(filename string) (*Config, error) {
 	}
 	defer fd.Close()
 
-	in, err := ioutil.ReadAll(fd)
-	if err != nil {
+	cfg := &Config{}
+	if err = cfg.Parse(fd); err != nil {
 		return nil, err
 	}
 
-	cfg := &Config{}
-	err = json.Unmarshal(in, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("Could not decode json: %v", err)
-	}
-
-	err = cfg.Validate()
-	if err != nil {
-		return nil, fmt.Errorf("Invalid configuration: %v", err)
-	}
-
 	return cfg, nil
+}
+
+func (c *Config) Parse(rd io.Reader) error {
+	in, err := ioutil.ReadAll(rd)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(in, c)
+	if err != nil {
+		return fmt.Errorf("Could not decode json: %v", err)
+	}
+
+	err = c.Validate()
+	if err != nil {
+		return fmt.Errorf("Invalid configuration: %v", err)
+	}
+	return nil
 }
 
 func (c *Config) AwsInstances() []*string {
@@ -74,7 +81,7 @@ func (c *Config) EndpointURL() (*url.URL, error) {
 
 func (c *Config) Validate() error {
 	if len(c.Instances) == 0 && len(c.AutoScaling.Stop) == 0 && len(c.AutoScaling.Terminate) == 0 {
-		return fmt.Errorf("No instances configured")
+		return fmt.Errorf("No instances or asg configured")
 	}
 
 	if len(c.Endpoint) == 0 {
@@ -82,11 +89,11 @@ func (c *Config) Validate() error {
 	}
 
 	if c.HcInterval <= 0 {
-		c.HcInterval = Duration(time.Minute)
+		c.HcInterval = Duration(30 * time.Second)
 	}
 
 	if c.IdleTimeout <= 0 {
-		c.IdleTimeout = Duration(time.Minute)
+		c.IdleTimeout = Duration(3 * time.Hour)
 	}
 	return nil
 }

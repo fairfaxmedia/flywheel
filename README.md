@@ -1,5 +1,7 @@
 # Flywheel
 
+[![Build Status](https://travis-ci.org/fairfaxmedia/flywheel.svg?branch=develop)](https://travis-ci.org/fairfaxmedia/flywheel)
+
 Flywheel is a HTTP proxy which starts and stops EC2 instances sitting behind
 it.
 

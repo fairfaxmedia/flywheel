@@ -2,12 +2,11 @@ language: go
 sudo: false
 go:
   - 1.5.4
-  - 1.6.2
   - tip
 env:
   - GOARCH=amd64
 script:
-  - test -v ./...
+  - go test -v ./...
 notifications:
   email: false
 matrix:

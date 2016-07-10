@@ -1,0 +1,58 @@
+{
+	"ImportPath": "flywheel",
+	"GoVersion": "go1.6.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/endpoints",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/ec2query",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/query",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/rest",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/private/signer/v4",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/autoscaling",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/ec2",
+			"Comment": "v0.9.17",
+			"Rev": "1481c919816453abc15fbe2cd6e071dfc2f188a0"
+		},
+		{
+			"ImportPath": "github.com/vaughan0/go-ini",
+			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
+		}
+	]
+}

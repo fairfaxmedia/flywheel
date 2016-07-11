@@ -142,7 +142,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if pong.Err != nil {
-		body := fmt.Sprintf(HTML_ERROR, pong.Err)
+		body := fmt.Sprintf(HTMLERROR, pong.Err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(body))
 		return
@@ -152,19 +152,19 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case STOPPED:
 		query.Set("flywheel", "start")
 		r.URL.RawQuery = query.Encode()
-		body := fmt.Sprintf(HTML_STOPPED, r.URL)
+		body := fmt.Sprintf(HTMLSTOPPED, r.URL)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(body))
 	case STARTING:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(HTML_STARTING))
+		w.Write([]byte(HTMLSTARTING))
 	case STARTED:
 		handler.Proxy(w, r)
 	case STOPPING:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(HTML_STOPPING))
+		w.Write([]byte(HTMLSTOPPING))
 	case UNHEALTHY:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(HTML_UNHEALTHY))
+		w.Write([]byte(HTMLUNHEALTHY))
 	}
 }

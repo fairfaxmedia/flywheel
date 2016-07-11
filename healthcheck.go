@@ -1,13 +1,15 @@
 package main
 
 import (
+	"log"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"log"
-	"time"
 )
 
+// Different state of the systems
 const (
 	STOPPED = iota
 	STARTING
@@ -16,7 +18,7 @@ const (
 	UNHEALTHY
 )
 
-// Working with integer statuses is mostly better, but it's
+// StatusString - Working with integer statuses is mostly better, but it's
 // occasionally necessary to output the status name.
 func StatusString(n int) string {
 	switch n {
@@ -35,7 +37,7 @@ func StatusString(n int) string {
 	}
 }
 
-// Check the status of the instances. Currently checks if they are "ready"; all
+// HealthWatcher - Check the status of the instances. Currently checks if they are "ready"; all
 // stopped or all started. Will need to be extended to determine actual status.
 func (fw *Flywheel) HealthWatcher(out chan<- int) {
 	out <- fw.CheckAll()
@@ -49,16 +51,18 @@ func (fw *Flywheel) HealthWatcher(out chan<- int) {
 	}
 }
 
+// CheckAll - check asg/instance state
+// TODO - add more information what is unhealthy
 func (fw *Flywheel) CheckAll() int {
 	health := make(map[string]int)
 
-	err := fw.CheckInstances(health)
+	err := fw.checkInstances(health)
 	if err != nil {
 		log.Print(err)
 		return UNHEALTHY
 	}
 
-	err = fw.CheckStoppedAutoScalingGroups(health)
+	err = fw.checkStoppedAutoScalingGroups(health)
 	if err != nil {
 		log.Print(err)
 		return UNHEALTHY
@@ -102,7 +106,7 @@ func (fw *Flywheel) CheckAll() int {
 	}
 }
 
-func (fw *Flywheel) CheckInstances(health map[string]int) error {
+func (fw *Flywheel) checkInstances(health map[string]int) error {
 	if len(fw.config.Instances) == 0 {
 		return nil
 	}
@@ -126,7 +130,7 @@ func (fw *Flywheel) CheckInstances(health map[string]int) error {
 	return nil
 }
 
-func (fw *Flywheel) CheckStoppedAutoScalingGroups(health map[string]int) error {
+func (fw *Flywheel) checkStoppedAutoScalingGroups(health map[string]int) error {
 	var err error
 	var awsGroupNames []*string
 
@@ -193,7 +197,8 @@ func (fw *Flywheel) CheckStoppedAutoScalingGroups(health map[string]int) error {
 	return nil
 }
 
-func (fw *Flywheel) CheckTerminatedAutoScalingGroups(health map[string]int) error {
+// NOT USED ?
+func (fw *Flywheel) checkTerminatedAutoScalingGroups(health map[string]int) error {
 	var err error
 	var awsGroupNames []*string
 
@@ -214,9 +219,9 @@ func (fw *Flywheel) CheckTerminatedAutoScalingGroups(health map[string]int) erro
 	for _, group := range resp.AutoScalingGroups {
 		if *group.MaxSize == 0 {
 			if len(group.Instances) == 0 {
-				health["stopped"] += 1
+				health["stopped"]++
 			} else {
-				health["stopping"] += 1
+				health["stopping"]++
 			}
 			continue
 		}
@@ -230,7 +235,7 @@ func (fw *Flywheel) CheckTerminatedAutoScalingGroups(health map[string]int) erro
 		}
 
 		if healthy {
-			health["running"] += 1
+			health["running"]++
 			if len(group.SuspendedProcesses) > 0 {
 				_, err = fw.autoscaling.ResumeProcesses(
 					&autoscaling.ScalingProcessQuery{
@@ -242,7 +247,7 @@ func (fw *Flywheel) CheckTerminatedAutoScalingGroups(health map[string]int) erro
 				}
 			}
 		} else {
-			health["starting"] += 1
+			health["starting"]++
 		}
 	}
 

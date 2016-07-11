@@ -9,6 +9,11 @@
     "i-example"
   ],
   "autoscaling": {
-    "ucms-my-environator-publish-ScalingGroup": 1
+    "terminate" : {
+      "ucms-my-environator-publish-ScalingGroup": 1
+    },
+    "stop": [
+      "my-unsafe-scaling-group"
+    ]
   }
 }

@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
+// Config flywheel config file
 type Config struct {
 	Vhosts      map[string]string `json:"vhosts"`
+	Region      string            `json:"aws_region"`
 	Endpoint    string            `json:"endpoint"`
 	Instances   []string          `json:"instances"`
 	HcInterval  Duration          `json:"healthcheck-interval"`
@@ -19,13 +21,16 @@ type Config struct {
 	AutoScaling AutoScalingConfig `json:"autoscaling"`
 }
 
+// AutoScalingConfig list of terminate/stop AWS ASG
 type AutoScalingConfig struct {
 	Terminate map[string]int64 `json:"terminate"`
 	Stop      []string         `json:"stop"`
 }
 
+// Duration helper type to parse duration from json
 type Duration time.Duration
 
+// UnmarshalText - unmarshal duration from JSON
 func (d *Duration) UnmarshalText(b []byte) error {
 	v, err := time.ParseDuration(string(b))
 	if err != nil {
@@ -35,6 +40,7 @@ func (d *Duration) UnmarshalText(b []byte) error {
 	return nil
 }
 
+// ReadConfig - read config file from a file
 func ReadConfig(filename string) (*Config, error) {
 	fd, err := os.Open(filename)
 	if err != nil {
@@ -50,6 +56,7 @@ func ReadConfig(filename string) (*Config, error) {
 	return cfg, nil
 }
 
+// Parse the config file
 func (c *Config) Parse(rd io.Reader) error {
 	in, err := ioutil.ReadAll(rd)
 	if err != nil {
@@ -67,6 +74,7 @@ func (c *Config) Parse(rd io.Reader) error {
 	return nil
 }
 
+// AwsInstances retrieve a list of AWS instance id as requested by AWK SDK
 func (c *Config) AwsInstances() []*string {
 	awsIds := make([]*string, len(c.Instances))
 	for i := range c.Instances {
@@ -75,10 +83,12 @@ func (c *Config) AwsInstances() []*string {
 	return awsIds
 }
 
+// EndpointURL get endpoint URL as an URL type
 func (c *Config) EndpointURL() (*url.URL, error) {
 	return url.Parse(c.Endpoint)
 }
 
+// Validate config content
 func (c *Config) Validate() error {
 	if len(c.Instances) == 0 && len(c.AutoScaling.Stop) == 0 && len(c.AutoScaling.Terminate) == 0 {
 		return fmt.Errorf("No instances or asg configured")
@@ -95,5 +105,10 @@ func (c *Config) Validate() error {
 	if c.IdleTimeout <= 0 {
 		c.IdleTimeout = Duration(3 * time.Hour)
 	}
+
+	if c.Region == "" {
+		c.Region = "ap-southeast-2"
+	}
+
 	return nil
 }

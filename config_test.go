@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var configJsonV0_1 = `
+var configJSONV0_1 = `
 {
   "idle-timeout": "3h",
   "healthcheck-interval": "30s",
@@ -32,7 +32,7 @@ var configJsonV0_1 = `
 func TestDefaultConfig(t *testing.T) {
 	c := &Config{}
 
-	if err := c.Parse(bytes.NewBufferString(configJsonV0_1)); err != nil {
+	if err := c.Parse(bytes.NewBufferString(configJSONV0_1)); err != nil {
 		t.Errorf("Expexted no error, but got %s", err)
 	}
 
@@ -44,10 +44,14 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("Expexted idle-timeout 30s, but got %v", c.HcInterval)
 	}
 
+	if c.Region != "ap-southeast-2" {
+		t.Errorf("Expexted region 'ap-southeast-2', but got %v", c.Region)
+	}
+
 }
 
 // Missing instances and autoscaling groups
-var configBrokenJsonV0_1 = `
+var configBrokenJSONV0_1 = `
 {
   "endpoint": "dev.example.com",
   "vhosts": {
@@ -59,14 +63,14 @@ var configBrokenJsonV0_1 = `
 func TestMissingInsAsgConfig(t *testing.T) {
 	c := &Config{}
 
-	if err := c.Parse(bytes.NewBufferString(configBrokenJsonV0_1)); err == nil {
+	if err := c.Parse(bytes.NewBufferString(configBrokenJSONV0_1)); err == nil {
 		t.Errorf("Expexted an error, but got %s", err)
 	}
 
 }
 
 // Missing instances and autoscaling groups
-var configDefaultJsonV0_1 = `
+var configDefaultJSONV0_1 = `
 {
   "endpoint": "dev.example.com",
   "vhosts": {
@@ -81,7 +85,7 @@ var configDefaultJsonV0_1 = `
 func TestDefaultValuesConfig(t *testing.T) {
 	c := &Config{}
 
-	if err := c.Parse(bytes.NewBufferString(configDefaultJsonV0_1)); err != nil {
+	if err := c.Parse(bytes.NewBufferString(configDefaultJSONV0_1)); err != nil {
 		t.Errorf("Expexted no error, but got %s", err)
 	}
 
@@ -99,7 +103,7 @@ func TestDefaultValuesConfig(t *testing.T) {
 }
 
 // Missing instances and autoscaling groups
-var configMissingEndPointJsonV0_1 = `
+var configMissingEndPointJSONV0_1 = `
 {
   "vhosts": {
     "alt-site.example.com": "dev2.example.com"
@@ -113,7 +117,7 @@ var configMissingEndPointJsonV0_1 = `
 func TestMissingEndpointConfig(t *testing.T) {
 	c := &Config{}
 
-	if err := c.Parse(bytes.NewBufferString(configMissingEndPointJsonV0_1)); err == nil {
+	if err := c.Parse(bytes.NewBufferString(configMissingEndPointJSONV0_1)); err == nil {
 		t.Errorf("Expexted no error, but got %s", err)
 	}
 

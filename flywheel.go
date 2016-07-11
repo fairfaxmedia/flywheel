@@ -49,9 +49,8 @@ type Flywheel struct {
 }
 
 func New(config *Config) *Flywheel {
-	region := "ap-southeast-2"
 
-	awsConfig := &aws.Config{Region: &region}
+	awsConfig := &aws.Config{Region: &config.Region}
 	sess := session.New(awsConfig)
 
 	return &Flywheel{

@@ -52,7 +52,7 @@ func writeStatusFile(statusFile string, flywheel *Flywheel) {
 
 	fd, err := os.OpenFile(statusFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Print("Unable to write status file: %v", err)
+		log.Printf("Unable to write status file: %s", err)
 		return
 	}
 	defer fd.Close()
@@ -64,13 +64,13 @@ func writeStatusFile(statusFile string, flywheel *Flywheel) {
 
 	buf, err := json.Marshal(pong)
 	if err != nil {
-		log.Print("Unable to write status file: %v", err)
+		log.Printf("Unable to write status file: %s", err)
 		return
 	}
 
 	_, err = fd.Write(buf)
 	if err != nil {
-		log.Print("Unable to write status file: %v", err)
+		log.Printf("Unable to write status file: %s", err)
 		return
 	}
 }

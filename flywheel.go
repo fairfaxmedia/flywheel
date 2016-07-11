@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"log"
@@ -51,14 +52,16 @@ func New(config *Config) *Flywheel {
 	region := "ap-southeast-2"
 
 	awsConfig := &aws.Config{Region: &region}
+	sess := session.New(awsConfig)
+
 	return &Flywheel{
 		hcInterval:  time.Duration(config.HcInterval),
 		idleTimeout: time.Duration(config.IdleTimeout),
 		config:      config,
 		pings:       make(chan Ping),
 		stopAt:      time.Now(),
-		ec2:         ec2.New(awsConfig),
-		autoscaling: autoscaling.New(awsConfig),
+		ec2:         ec2.New(sess),
+		autoscaling: autoscaling.New(sess),
 	}
 }
 

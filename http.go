@@ -97,7 +97,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pong := handler.SendPing(query.Get("flywheel"))
+	pong := handler.SendPing(param)
 
 	if param == "start" {
 		query.Del("flywheel")
@@ -118,11 +118,14 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if param != "" {
-		buf, err := json.Marshal(pong)
+		buf, err := json.MarshalIndent(pong, "", "    ")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, err)
-		} else if param != "status" {
+			return
+		}
+
+		if param != "status" {
 			query.Del("flywheel")
 			r.URL.RawQuery = query.Encode()
 			w.Header().Set("Content-Type", "application/json")

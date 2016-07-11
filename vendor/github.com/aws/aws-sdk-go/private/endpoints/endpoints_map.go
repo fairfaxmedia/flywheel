@@ -30,6 +30,9 @@ var endpointsMap = endpointStruct{
 			Endpoint:      "",
 			SigningRegion: "us-east-1",
 		},
+		"*/ec2metadata": {
+			Endpoint: "http://169.254.169.254/latest",
+		},
 		"*/iam": {
 			Endpoint:      "iam.amazonaws.com",
 			SigningRegion: "us-east-1",
@@ -42,30 +45,25 @@ var endpointsMap = endpointStruct{
 			Endpoint:      "route53.amazonaws.com",
 			SigningRegion: "us-east-1",
 		},
+		"*/s3": {
+			Endpoint: "s3-{region}.amazonaws.com",
+		},
 		"*/sts": {
 			Endpoint:      "sts.amazonaws.com",
 			SigningRegion: "us-east-1",
 		},
-		"ap-northeast-1/s3": {
-			Endpoint: "s3-{region}.amazonaws.com",
-		},
-		"ap-southeast-1/s3": {
-			Endpoint: "s3-{region}.amazonaws.com",
-		},
-		"ap-southeast-2/s3": {
-			Endpoint: "s3-{region}.amazonaws.com",
+		"*/waf": {
+			Endpoint:      "waf.amazonaws.com",
+			SigningRegion: "us-east-1",
 		},
 		"cn-north-1/*": {
 			Endpoint: "{service}.{region}.amazonaws.com.cn",
 		},
+		"cn-north-1/ec2metadata": {
+			Endpoint: "http://169.254.169.254/latest",
+		},
 		"eu-central-1/s3": {
 			Endpoint: "{service}.{region}.amazonaws.com",
-		},
-		"eu-west-1/s3": {
-			Endpoint: "s3-{region}.amazonaws.com",
-		},
-		"sa-east-1/s3": {
-			Endpoint: "s3-{region}.amazonaws.com",
 		},
 		"us-east-1/s3": {
 			Endpoint: "s3.amazonaws.com",
@@ -73,6 +71,9 @@ var endpointsMap = endpointStruct{
 		"us-east-1/sdb": {
 			Endpoint:      "sdb.amazonaws.com",
 			SigningRegion: "us-east-1",
+		},
+		"us-gov-west-1/ec2metadata": {
+			Endpoint: "http://169.254.169.254/latest",
 		},
 		"us-gov-west-1/iam": {
 			Endpoint: "iam.us-gov.amazonaws.com",
@@ -82,12 +83,6 @@ var endpointsMap = endpointStruct{
 		},
 		"us-gov-west-1/sts": {
 			Endpoint: "sts.us-gov-west-1.amazonaws.com",
-		},
-		"us-west-1/s3": {
-			Endpoint: "s3-{region}.amazonaws.com",
-		},
-		"us-west-2/s3": {
-			Endpoint: "s3-{region}.amazonaws.com",
 		},
 	},
 }

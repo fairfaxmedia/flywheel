@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go/private/protocol"
 )
 
 // Parse parses an object i and fills a url.Values object. The isEC2 flag
@@ -68,14 +70,19 @@ func (q *queryParser) parseStruct(v url.Values, value reflect.Value, prefix stri
 
 	t := value.Type()
 	for i := 0; i < value.NumField(); i++ {
-		if c := t.Field(i).Name[0:1]; strings.ToLower(c) == c {
+		elemValue := elemOf(value.Field(i))
+		field := t.Field(i)
+
+		if field.PkgPath != "" {
 			continue // ignore unexported fields
 		}
 
-		value := elemOf(value.Field(i))
-		field := t.Field(i)
-		var name string
+		if protocol.CanSetIdempotencyToken(value.Field(i), field) {
+			token := protocol.GetIdempotencyToken()
+			elemValue = reflect.ValueOf(token)
+		}
 
+		var name string
 		if q.isEC2 {
 			name = field.Tag.Get("queryName")
 		}
@@ -97,7 +104,7 @@ func (q *queryParser) parseStruct(v url.Values, value reflect.Value, prefix stri
 			name = prefix + "." + name
 		}
 
-		if err := q.parseValue(v, value, name, field.Tag); err != nil {
+		if err := q.parseValue(v, elemValue, name, field.Tag); err != nil {
 			return err
 		}
 	}

@@ -11,11 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go/private/protocol/query/queryutil"
 )
 
+// BuildHandler is a named request handler for building query protocol requests
+var BuildHandler = request.NamedHandler{Name: "awssdk.query.Build", Fn: Build}
+
 // Build builds a request for an AWS Query service.
 func Build(r *request.Request) {
 	body := url.Values{
 		"Action":  {r.Operation.Name},
-		"Version": {r.Service.APIVersion},
+		"Version": {r.ClientInfo.APIVersion},
 	}
 	if err := queryutil.Parse(body, r.Params, false); err != nil {
 		r.Error = awserr.New("SerializationError", "failed encoding Query request", err)

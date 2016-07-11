@@ -86,7 +86,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	param := query.Get("flywheel")
 
 	if param == "config" {
-		buf, err := json.Marshal(handler.flywheel.config) // Might be unsafe, but this should be read only.
+		buf, err := json.MarshalIndent(handler.flywheel.config, "", "    ") // Might be unsafe, but this should be read only.
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, err)

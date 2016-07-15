@@ -48,21 +48,15 @@ func (handler *Handler) sendPing(op string) Pong {
 	return status
 }
 
+// TODO - refactor this function to use context
 func (handler *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
+
+	r.URL.Host = handler.flywheel.ProxyEndpoint(r.Host)
+	r.URL.Scheme = "http"
+	r.RequestURI = ""
 	r.URL.Query().Del("flywheel")
 
-	endpoint := handler.flywheel.ProxyEndpoint(r.Host)
-	if endpoint == "" {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Invalid flywheel endpoint config"))
-		log.Fatal("Invalid endpoint URL")
-	}
-
-	r.URL.Scheme = "http"
-
-	r.URL.Host = endpoint
-	r.RequestURI = ""
 	resp, err := client.Do(r)
 	if err != nil {
 		log.Print(err)

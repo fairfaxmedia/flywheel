@@ -11,12 +11,14 @@ import (
 	"time"
 )
 
+// Handler flywheel handler
 type Handler struct {
 	flywheel *Flywheel
 	tmpl     *template.Template
 }
 
-func (handler *Handler) SendPing(op string) Pong {
+// sendPing - sends a request to the flywheel to retrieve/change the state
+func (handler *Handler) sendPing(op string) Pong {
 	var err error
 
 	replyTo := make(chan Pong, 1)
@@ -46,7 +48,7 @@ func (handler *Handler) SendPing(op string) Pong {
 	return status
 }
 
-func (handler *Handler) Proxy(w http.ResponseWriter, r *http.Request) {
+func (handler *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 	r.URL.Query().Del("flywheel")
 
@@ -97,7 +99,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pong := handler.SendPing(param)
+	pong := handler.sendPing(param)
 
 	if param == "start" {
 		query.Del("flywheel")
@@ -108,12 +110,12 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accept := query.Get("Accept")
-	var acceptHtml bool
+	var acceptHTML bool
 	if accept != "" {
 		htmlIndex := strings.Index(accept, "text/html")
 		jsonIndex := strings.Index(accept, "application/json")
 		if htmlIndex != -1 {
-			acceptHtml = jsonIndex == -1 || htmlIndex < jsonIndex
+			acceptHTML = jsonIndex == -1 || htmlIndex < jsonIndex
 		}
 	}
 
@@ -129,7 +131,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			query.Del("flywheel")
 			r.URL.RawQuery = query.Encode()
 			w.Header().Set("Content-Type", "application/json")
-			if acceptHtml {
+			if acceptHTML {
 				w.Header().Set("Location", r.URL.String())
 				w.WriteHeader(http.StatusTemporaryRedirect)
 			}
@@ -159,7 +161,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(HTMLSTARTING))
 	case STARTED:
-		handler.Proxy(w, r)
+		handler.proxy(w, r)
 	case STOPPING:
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(HTMLSTOPPING))

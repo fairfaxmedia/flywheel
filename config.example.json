@@ -1,14 +1,20 @@
 {
   "healthcheck-interval": "1m",
+  "region": "ap-southeast-2",
   "idle-timeout": "3h",
-  "endpoint": "http://akamai-ets.my-environator.ucms.f2.com.au",
+  "endpoint": "akamai-ets.my-environator.ucms.f2.com.au",
   "vhosts": {
     "author.my-environator.ucms.f2.com.au": "azcmsdau012a.dynamic.f2.com.au"
   },
   "instances": [
-    "i-example",
+    "i-example"
   ],
   "autoscaling": {
-    "ucms-my-environator-publish-ScalingGroup": 1
+    "terminate" : {
+      "ucms-my-environator-publish-ScalingGroup": 1
+    },
+    "stop": [
+      "my-unsafe-scaling-group"
+    ]
   }
 }

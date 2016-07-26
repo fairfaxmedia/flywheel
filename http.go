@@ -1,22 +1,45 @@
-package main
+package flywheel
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"text/template"
 	"time"
 )
 
+// Handler flywheel handler
 type Handler struct {
-	flywheel *Flywheel
+	Flywheel *Flywheel
 	tmpl     *template.Template
+
+	// HTTPClient is the HTTP client to use when proxying request to the backends
+	// This is used to control redirect behavior.
+	HTTPClient *http.Client
 }
 
-func (handler *Handler) SendPing(op string) Pong {
+// ErrIgnoreRedirects used for proxy redirect ignore
+var ErrIgnoreRedirects = errors.New("Ignore Redirect Error")
+
+// NewHandler create flywheel http handler
+func NewHandler(fw *Flywheel) *Handler {
+	return &Handler{
+		Flywheel: fw,
+		HTTPClient: &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return ErrIgnoreRedirects
+			},
+		},
+	}
+}
+
+// sendPing - sends a request to the flywheel to retrieve/change the state
+func (handler *Handler) sendPing(op string) Pong {
 	var err error
 
 	replyTo := make(chan Pong, 1)
@@ -38,7 +61,7 @@ func (handler *Handler) SendPing(op string) Pong {
 		sreq.setTimeout = dur
 	}
 
-	handler.flywheel.pings <- sreq
+	handler.Flywheel.pings <- sreq
 	status := <-replyTo
 	if err != nil && status.Err == nil {
 		status.Err = err
@@ -46,26 +69,25 @@ func (handler *Handler) SendPing(op string) Pong {
 	return status
 }
 
-func (handler *Handler) Proxy(w http.ResponseWriter, r *http.Request) {
-	client := &http.Client{}
+// TODO - refactor this function to use context
+// TODO - add support for SSL
+func (handler *Handler) proxy(w http.ResponseWriter, r *http.Request) {
+
+	r.URL.Host = handler.Flywheel.ProxyEndpoint(r.Host)
+	r.URL.Scheme = "http"
+	r.RequestURI = ""
 	r.URL.Query().Del("flywheel")
 
-	endpoint := handler.flywheel.ProxyEndpoint(r.Host)
-	if endpoint == "" {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Invalid flywheel endpoint config"))
-		log.Fatal("Invalid endpoint URL")
-	}
+	resp, err := handler.HTTPClient.Do(r)
 
-	r.URL.Scheme = "http"
-
-	r.URL.Host = endpoint
-	r.RequestURI = ""
-	resp, err := client.Do(r)
 	if err != nil {
-		log.Print(err)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
+		if urlError, ok := err.(*url.Error); ok && urlError.Err == ErrIgnoreRedirects {
+			err = nil
+		} else {
+			log.Print(err)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 	}
 
 	for key, value := range resp.Header {
@@ -74,7 +96,8 @@ func (handler *Handler) Proxy(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 
 	_, err = io.Copy(w, resp.Body)
-	if err != nil {
+	// if response code is between 300 and 400 sometimes body does not exist
+	if err != nil && (!(resp.StatusCode >= 300 && resp.StatusCode < 400)) {
 		log.Print(err)
 	}
 }
@@ -86,7 +109,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	param := query.Get("flywheel")
 
 	if param == "config" {
-		buf, err := json.Marshal(handler.flywheel.config) // Might be unsafe, but this should be read only.
+		buf, err := json.MarshalIndent(handler.Flywheel.config, "", "    ") // Might be unsafe, but this should be read only.
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, err)
@@ -97,7 +120,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pong := handler.SendPing(query.Get("flywheel"))
+	pong := handler.sendPing(param)
 
 	if param == "start" {
 		query.Del("flywheel")
@@ -108,25 +131,28 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	accept := query.Get("Accept")
-	var acceptHtml bool
+	var acceptHTML bool
 	if accept != "" {
 		htmlIndex := strings.Index(accept, "text/html")
 		jsonIndex := strings.Index(accept, "application/json")
 		if htmlIndex != -1 {
-			acceptHtml = jsonIndex == -1 || htmlIndex < jsonIndex
+			acceptHTML = jsonIndex == -1 || htmlIndex < jsonIndex
 		}
 	}
 
 	if param != "" {
-		buf, err := json.Marshal(pong)
+		buf, err := json.MarshalIndent(pong, "", "    ")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, err)
-		} else if param != "status" {
+			return
+		}
+
+		if param != "status" {
 			query.Del("flywheel")
 			r.URL.RawQuery = query.Encode()
 			w.Header().Set("Content-Type", "application/json")
-			if acceptHtml {
+			if acceptHTML {
 				w.Header().Set("Location", r.URL.String())
 				w.WriteHeader(http.StatusTemporaryRedirect)
 			}
@@ -139,7 +165,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if pong.Err != nil {
-		body := fmt.Sprintf(HTML_ERROR, pong.Err)
+		body := fmt.Sprintf(HTMLERROR, pong.Err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(body))
 		return
@@ -149,19 +175,19 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case STOPPED:
 		query.Set("flywheel", "start")
 		r.URL.RawQuery = query.Encode()
-		body := fmt.Sprintf(HTML_STOPPED, r.URL)
+		body := fmt.Sprintf(HTMLSTOPPED, r.URL)
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(body))
 	case STARTING:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(HTML_STARTING))
+		w.Write([]byte(HTMLSTARTING))
 	case STARTED:
-		handler.Proxy(w, r)
+		handler.proxy(w, r)
 	case STOPPING:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(HTML_STOPPING))
+		w.Write([]byte(HTMLSTOPPING))
 	case UNHEALTHY:
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(HTML_UNHEALTHY))
+		w.Write([]byte(HTMLUNHEALTHY))
 	}
 }

@@ -1,10 +1,11 @@
-package main
+package flywheel
 
 /*
 This could probably be smarter, but it'll do for now.
 */
 
-const HTML_STOPPED = `
+// HTMLSTOPPED - display when system is stopped
+const HTMLSTOPPED = `
 	<html>
 		<body style="color: #333333; background: #f5f5f5;">
 			<h1 style="text-align: center; margin-top: 50px; font-size: larger;">Your service is currently powered down</h1>
@@ -12,7 +13,8 @@ const HTML_STOPPED = `
 		</body>
 	</html>`
 
-const HTML_STARTING = `
+// HTMLSTARTING - display when system is starting
+const HTMLSTARTING = `
 	<html>
 		<script>
 			setTimeout(function() {
@@ -25,7 +27,8 @@ const HTML_STARTING = `
 		</body>
 	</html>`
 
-const HTML_STOPPING = `
+// HTMLSTOPPING - display when system is stopping
+const HTMLSTOPPING = `
 	<html>
 		<script>
 			setTimeout(function() {
@@ -38,7 +41,8 @@ const HTML_STOPPING = `
 		</body>
 	</html>`
 
-const HTML_UNHEALTHY = `
+// HTMLUNHEALTHY - display when system is unhealthy
+const HTMLUNHEALTHY = `
 	<html>
 		<body style="color: #333333; background: #f5f5f5">
 			<h1 style="text-align: center; margin-top: 50px; font-size: larger;">Your service appears to be in an unhealthy or inconsistent state</h1>
@@ -46,7 +50,8 @@ const HTML_UNHEALTHY = `
 		</body>
 	</html>`
 
-const HTML_ERROR = `
+// HTMLERROR - display when error
+const HTMLERROR = `
 	<html>
 		<body style="color: #333333; background: #f5f5f5">
 			<h1 style="text-align: center; margin-top: 50px; font-size: larger;">An error occured processing your request</h1>

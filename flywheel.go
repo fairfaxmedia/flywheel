@@ -1,18 +1,23 @@
-package main
+package flywheel
 
 import (
+	"encoding/json"
+	"io"
+	"log"
+	"os"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"log"
-	"time"
 )
 
 // How often flywheel will update its internal state and/or check for idle
 // timeouts
-const SPIN_INTERVAL = time.Second
+const SpinINTERVAL = time.Second
 
-// HTTP requests "ping" the flywheel goroutine. This updates the idle timeout,
+// Ping - HTTP requests "ping" the flywheel goroutine. This updates the idle timeout,
 // and returns the current status to the http request.
 type Ping struct {
 	replyTo      chan Pong
@@ -22,6 +27,7 @@ type Ping struct {
 	noop         bool
 }
 
+// Pong - result of the ping request
 type Pong struct {
 	Status      int       `json:"-"`
 	StatusName  string    `json:"status"`
@@ -31,7 +37,7 @@ type Pong struct {
 	StopAt      time.Time `json:"stop-due-at"`
 }
 
-// The Flywheel struct holds all the state required by the flywheel goroutine.
+// Flywheel struct holds all the state required by the flywheel goroutine.
 type Flywheel struct {
 	config      *Config
 	running     bool
@@ -47,50 +53,24 @@ type Flywheel struct {
 	idleTimeout time.Duration
 }
 
+// New - Create new Flywheel type
 func New(config *Config) *Flywheel {
-	region := "ap-southeast-2"
 
-	var hcInterval time.Duration
-	var idleTimeout time.Duration
+	awsConfig := &aws.Config{Region: &config.Region}
+	sess := session.New(awsConfig)
 
-	s := config.HcInterval
-	if s == "" {
-		hcInterval = time.Minute
-	} else {
-		d, err := time.ParseDuration(s)
-		if err != nil {
-			log.Printf("Invalid duration: %v", err)
-			hcInterval = time.Minute
-		} else {
-			hcInterval = d
-		}
-	}
-
-	s = config.IdleTimeout
-	if s == "" {
-		idleTimeout = time.Minute
-	} else {
-		d, err := time.ParseDuration(s)
-		if err != nil {
-			log.Printf("Invalid duration: %v", err)
-			idleTimeout = time.Minute
-		} else {
-			idleTimeout = d
-		}
-	}
-
-	awsConfig := &aws.Config{Region: &region}
 	return &Flywheel{
-		hcInterval:  hcInterval,
-		idleTimeout: idleTimeout,
+		hcInterval:  time.Duration(config.HcInterval),
+		idleTimeout: time.Duration(config.IdleTimeout),
 		config:      config,
 		pings:       make(chan Ping),
 		stopAt:      time.Now(),
-		ec2:         ec2.New(awsConfig),
-		autoscaling: autoscaling.New(awsConfig),
+		ec2:         ec2.New(sess),
+		autoscaling: autoscaling.New(sess),
 	}
 }
 
+// ProxyEndpoint - retrieve the reverse proxy destination
 func (fw *Flywheel) ProxyEndpoint(hostname string) string {
 	vhost, ok := fw.config.Vhosts[hostname]
 	if ok {
@@ -99,14 +79,13 @@ func (fw *Flywheel) ProxyEndpoint(hostname string) string {
 	return fw.config.Endpoint
 }
 
-// Runs the main loop for the Flywheel.
-// Never returns, so should probably be run as a goroutine.
+// Spin - Runs the main loop for the Flywheel.
 func (fw *Flywheel) Spin() {
 	hchan := make(chan int, 1)
 
 	go fw.HealthWatcher(hchan)
 
-	ticker := time.NewTicker(SPIN_INTERVAL)
+	ticker := time.NewTicker(SpinINTERVAL)
 	for {
 		select {
 		case ping := <-fw.pings:
@@ -129,8 +108,7 @@ func (fw *Flywheel) Spin() {
 	}
 }
 
-// HTTP requests "ping" the flywheel goroutine. This updates the idle timeout,
-// and returns the current status to the http request.
+// RecvPing - process user ping requests and update state if needed
 func (fw *Flywheel) RecvPing(ping *Ping) {
 	var pong Pong
 
@@ -166,7 +144,7 @@ func (fw *Flywheel) RecvPing(ping *Ping) {
 	ch <- pong
 }
 
-// The periodic check for starting/stopping state transitions and idle
+// Poll - The periodic check for starting/stopping state transitions and idle
 // timeouts
 func (fw *Flywheel) Poll() {
 	switch fw.status {
@@ -198,13 +176,13 @@ func (fw *Flywheel) Start() error {
 	log.Print("Startup beginning")
 
 	var err error
-	err = fw.StartInstances()
+	err = fw.startInstances()
 
 	if err == nil {
-		err = fw.UnterminateAutoScaling()
+		err = fw.unterminateAutoScaling()
 	}
 	if err == nil {
-		err = fw.StartAutoScaling()
+		err = fw.startAutoScaling()
 	}
 
 	if err != nil {
@@ -219,7 +197,7 @@ func (fw *Flywheel) Start() error {
 }
 
 // Start EC2 instances
-func (fw *Flywheel) StartInstances() error {
+func (fw *Flywheel) startInstances() error {
 	if len(fw.config.Instances) == 0 {
 		return nil
 	}
@@ -232,8 +210,8 @@ func (fw *Flywheel) StartInstances() error {
 	return err
 }
 
-// Restore autoscaling group instances
-func (fw *Flywheel) UnterminateAutoScaling() error {
+// UnterminateAutoScaling - Restore autoscaling group instances
+func (fw *Flywheel) unterminateAutoScaling() error {
 	var err error
 	for groupName, size := range fw.config.AutoScaling.Terminate {
 		log.Printf("Restoring autoscaling group %s", groupName)
@@ -254,7 +232,7 @@ func (fw *Flywheel) UnterminateAutoScaling() error {
 // Start EC2 instances in a suspended autoscale group
 // @note The autoscale group isn't unsuspended here. It's done by the
 //       healthcheck once all the instances are healthy.
-func (fw *Flywheel) StartAutoScaling() error {
+func (fw *Flywheel) startAutoScaling() error {
 	for _, groupName := range fw.config.AutoScaling.Stop {
 		log.Printf("Starting autoscaling group %s", groupName)
 
@@ -292,13 +270,13 @@ func (fw *Flywheel) Stop() error {
 	fw.lastStopped = time.Now()
 
 	var err error
-	err = fw.StopInstances()
+	err = fw.stopInstances()
 
 	if err == nil {
-		err = fw.TerminateAutoScaling()
+		err = fw.terminateAutoScaling()
 	}
 	if err == nil {
-		err = fw.StopAutoScaling()
+		err = fw.stopAutoScaling()
 	}
 
 	if err != nil {
@@ -313,7 +291,7 @@ func (fw *Flywheel) Stop() error {
 }
 
 // Stop EC2 instances
-func (fw *Flywheel) StopInstances() error {
+func (fw *Flywheel) stopInstances() error {
 	if len(fw.config.Instances) == 0 {
 		return nil
 	}
@@ -327,7 +305,7 @@ func (fw *Flywheel) StopInstances() error {
 }
 
 // Suspend ReplaceUnhealthy in an autoscale group and stop the instances.
-func (fw *Flywheel) StopAutoScaling() error {
+func (fw *Flywheel) stopAutoScaling() error {
 	for _, groupName := range fw.config.AutoScaling.Stop {
 		log.Printf("Stopping autoscaling group %s", groupName)
 
@@ -373,7 +351,7 @@ func (fw *Flywheel) StopAutoScaling() error {
 }
 
 // Reduce autoscaling min/max instances to 0, causing the instances to be terminated.
-func (fw *Flywheel) TerminateAutoScaling() error {
+func (fw *Flywheel) terminateAutoScaling() error {
 	var err error
 	var zero int64
 	for groupName := range fw.config.AutoScaling.Terminate {
@@ -390,4 +368,68 @@ func (fw *Flywheel) TerminateAutoScaling() error {
 		}
 	}
 	return nil
+}
+
+// WriteStatusFile - Before we exit the application we write the current state
+func (fw *Flywheel) WriteStatusFile(statusFile string) {
+	var pong Pong
+
+	fd, err := os.OpenFile(statusFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Unable to write status file: %s", err)
+		return
+	}
+	defer fd.Close()
+
+	pong.Status = fw.status
+	pong.StatusName = StatusString(fw.status)
+	pong.LastStarted = fw.lastStarted
+	pong.LastStopped = fw.lastStopped
+
+	buf, err := json.Marshal(pong)
+	if err != nil {
+		log.Printf("Unable to write status file: %s", err)
+		return
+	}
+
+	_, err = fd.Write(buf)
+	if err != nil {
+		log.Printf("Unable to write status file: %s", err)
+		return
+	}
+}
+
+// ReadStatusFile load status from the status file
+func (fw *Flywheel) ReadStatusFile(statusFile string) {
+	fd, err := os.Open(statusFile)
+	if err != nil {
+		if err != os.ErrNotExist {
+			log.Printf("Unable to load status file: %v", err)
+		}
+		return
+	}
+
+	stat, err := fd.Stat()
+	if err != nil {
+		log.Printf("Unable to load status file: %v", err)
+		return
+	}
+
+	buf := make([]byte, int(stat.Size()))
+	_, err = io.ReadFull(fd, buf)
+	if err != nil {
+		log.Printf("Unable to load status file: %v", err)
+		return
+	}
+
+	var status Pong
+	err = json.Unmarshal(buf, &status)
+	if err != nil {
+		log.Printf("Unable to load status file: %v", err)
+		return
+	}
+
+	fw.status = status.Status
+	fw.lastStarted = status.LastStarted
+	fw.lastStopped = status.LastStopped
 }

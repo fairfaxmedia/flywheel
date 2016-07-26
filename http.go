@@ -2,10 +2,12 @@ package flywheel
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"text/template"
 	"time"
@@ -15,6 +17,25 @@ import (
 type Handler struct {
 	Flywheel *Flywheel
 	tmpl     *template.Template
+
+	// HTTPClient is the HTTP client to use when proxying request to the backends
+	// This is used to control redirect behavior.
+	HTTPClient *http.Client
+}
+
+// ErrIgnoreRedirects used for proxy redirect ignore
+var ErrIgnoreRedirects = errors.New("Ignore Redirect Error")
+
+// NewHandler create flywheel http handler
+func NewHandler(fw *Flywheel) *Handler {
+	return &Handler{
+		Flywheel: fw,
+		HTTPClient: &http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return ErrIgnoreRedirects
+			},
+		},
+	}
 }
 
 // sendPing - sends a request to the flywheel to retrieve/change the state
@@ -49,19 +70,24 @@ func (handler *Handler) sendPing(op string) Pong {
 }
 
 // TODO - refactor this function to use context
+// TODO - add support for SSL
 func (handler *Handler) proxy(w http.ResponseWriter, r *http.Request) {
-	client := &http.Client{}
 
 	r.URL.Host = handler.Flywheel.ProxyEndpoint(r.Host)
 	r.URL.Scheme = "http"
 	r.RequestURI = ""
 	r.URL.Query().Del("flywheel")
 
-	resp, err := client.Do(r)
+	resp, err := handler.HTTPClient.Do(r)
+
 	if err != nil {
-		log.Print(err)
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
+		if urlError, ok := err.(*url.Error); ok && urlError.Err == ErrIgnoreRedirects {
+			err = nil
+		} else {
+			log.Print(err)
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 	}
 
 	for key, value := range resp.Header {
@@ -70,7 +96,8 @@ func (handler *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(resp.StatusCode)
 
 	_, err = io.Copy(w, resp.Body)
-	if err != nil {
+	// if response code is between 300 and 400 sometimes body does not exist
+	if err != nil && (!(resp.StatusCode >= 300 && resp.StatusCode < 400)) {
 		log.Print(err)
 	}
 }

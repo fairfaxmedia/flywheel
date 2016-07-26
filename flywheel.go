@@ -1,7 +1,10 @@
-package main
+package flywheel
 
 import (
+	"encoding/json"
+	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -365,4 +368,68 @@ func (fw *Flywheel) terminateAutoScaling() error {
 		}
 	}
 	return nil
+}
+
+// WriteStatusFile - Before we exit the application we write the current state
+func (fw *Flywheel) WriteStatusFile(statusFile string) {
+	var pong Pong
+
+	fd, err := os.OpenFile(statusFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Printf("Unable to write status file: %s", err)
+		return
+	}
+	defer fd.Close()
+
+	pong.Status = fw.status
+	pong.StatusName = StatusString(fw.status)
+	pong.LastStarted = fw.lastStarted
+	pong.LastStopped = fw.lastStopped
+
+	buf, err := json.Marshal(pong)
+	if err != nil {
+		log.Printf("Unable to write status file: %s", err)
+		return
+	}
+
+	_, err = fd.Write(buf)
+	if err != nil {
+		log.Printf("Unable to write status file: %s", err)
+		return
+	}
+}
+
+// ReadStatusFile load status from the status file
+func (fw *Flywheel) ReadStatusFile(statusFile string) {
+	fd, err := os.Open(statusFile)
+	if err != nil {
+		if err != os.ErrNotExist {
+			log.Printf("Unable to load status file: %v", err)
+		}
+		return
+	}
+
+	stat, err := fd.Stat()
+	if err != nil {
+		log.Printf("Unable to load status file: %v", err)
+		return
+	}
+
+	buf := make([]byte, int(stat.Size()))
+	_, err = io.ReadFull(fd, buf)
+	if err != nil {
+		log.Printf("Unable to load status file: %v", err)
+		return
+	}
+
+	var status Pong
+	err = json.Unmarshal(buf, &status)
+	if err != nil {
+		log.Printf("Unable to load status file: %v", err)
+		return
+	}
+
+	fw.status = status.Status
+	fw.lastStarted = status.LastStarted
+	fw.lastStopped = status.LastStopped
 }

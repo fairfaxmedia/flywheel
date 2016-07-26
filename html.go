@@ -1,4 +1,4 @@
-package main
+package flywheel
 
 /*
 This could probably be smarter, but it'll do for now.

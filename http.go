@@ -1,4 +1,4 @@
-package main
+package flywheel
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ import (
 
 // Handler flywheel handler
 type Handler struct {
-	flywheel *Flywheel
+	Flywheel *Flywheel
 	tmpl     *template.Template
 }
 
@@ -40,7 +40,7 @@ func (handler *Handler) sendPing(op string) Pong {
 		sreq.setTimeout = dur
 	}
 
-	handler.flywheel.pings <- sreq
+	handler.Flywheel.pings <- sreq
 	status := <-replyTo
 	if err != nil && status.Err == nil {
 		status.Err = err
@@ -52,7 +52,7 @@ func (handler *Handler) sendPing(op string) Pong {
 func (handler *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 
-	r.URL.Host = handler.flywheel.ProxyEndpoint(r.Host)
+	r.URL.Host = handler.Flywheel.ProxyEndpoint(r.Host)
 	r.URL.Scheme = "http"
 	r.RequestURI = ""
 	r.URL.Query().Del("flywheel")
@@ -82,7 +82,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	param := query.Get("flywheel")
 
 	if param == "config" {
-		buf, err := json.MarshalIndent(handler.flywheel.config, "", "    ") // Might be unsafe, but this should be read only.
+		buf, err := json.MarshalIndent(handler.Flywheel.config, "", "    ") // Might be unsafe, but this should be read only.
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, err)

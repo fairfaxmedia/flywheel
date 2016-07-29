@@ -37,7 +37,7 @@ build:
 
 test:
 	@echo "+ $@"
-	@go test ./...
+	@test -z "$$(go list ./... | grep -v /vendor/ | xargs -L 1 go test | tee /dev/stderr)"
 
 bin: ${PREFIX}/bin/flywheel
 	@echo "+ $@"

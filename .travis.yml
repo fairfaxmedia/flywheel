@@ -6,7 +6,9 @@ go:
 env:
   - GOARCH=amd64
 script:
-  - go test -v ./...
+  - make test
+  - make fmt
+  - make lint
 notifications:
   email: false
 matrix:

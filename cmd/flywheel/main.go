@@ -77,9 +77,7 @@ func main() {
 
 	go fw.Spin()
 
-	handler := &flywheel.Handler{
-		Flywheel: fw,
-	}
+	handler := flywheel.NewHandler(fw)
 
 	http.Handle("/", handler)
 

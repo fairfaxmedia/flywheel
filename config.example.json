@@ -1,6 +1,6 @@
 {
   "healthcheck-interval": "1m",
-  "region": "ap-southeast-2",
+  "aws_region": "ap-southeast-2",
   "idle-timeout": "3h",
   "endpoint": "akamai-ets.my-environator.ucms.f2.com.au",
   "vhosts": {

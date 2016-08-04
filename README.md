@@ -47,7 +47,7 @@ Then start the server: `flywheel --config my-config.json --listen 0.0.0.0:80`
   "idle-timeout": "3h",
   "healthcheck-interval": "30s",
   "endpoint": "dev.example.com",
-  "region": "ap-southeast-2",
+  "aws_region": "ap-southeast-2",
   "vhosts": {
     "alt-site.example.com": "dev2.example.com"
   },

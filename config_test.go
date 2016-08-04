@@ -9,6 +9,7 @@ import (
 var configJSONV0_1 = `
 {
   "idle-timeout": "3h",
+  "aws_region" : "us-west-2",
   "healthcheck-interval": "30s",
   "endpoint": "dev.example.com",
   "vhosts": {
@@ -44,8 +45,8 @@ func TestDefaultConfig(t *testing.T) {
 		t.Errorf("Expexted idle-timeout 30s, but got %v", c.HcInterval)
 	}
 
-	if c.Region != "ap-southeast-2" {
-		t.Errorf("Expexted region 'ap-southeast-2', but got %v", c.Region)
+	if c.Region != "us-west-2" {
+		t.Errorf("Expexted region 'us-west-2', but got %v", c.Region)
 	}
 
 }

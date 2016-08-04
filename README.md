@@ -1,6 +1,6 @@
 # Flywheel
 
-[![Build Status](https://travis-ci.org/fairfaxmedia/flywheel.svg?branch=develop)](https://travis-ci.org/fairfaxmedia/flywheel)
+[![Build Status](https://travis-ci.org/fairfaxmedia/flywheel.svg)](https://travis-ci.org/fairfaxmedia/flywheel)
 
 Flywheel is a HTTP proxy which starts and stops EC2 instances sitting behind
 it.
@@ -47,7 +47,7 @@ Then start the server: `flywheel --config my-config.json --listen 0.0.0.0:80`
   "idle-timeout": "3h",
   "healthcheck-interval": "30s",
   "endpoint": "dev.example.com",
-  "region": "ap-southeast-2",
+  "aws_region": "ap-southeast-2",
   "vhosts": {
     "alt-site.example.com": "dev2.example.com"
   },

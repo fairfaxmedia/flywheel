@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -23,12 +24,19 @@ func main() {
 	var configFile string
 	var statusFile string
 	var setuid string
+	var showVersion bool
 
 	flag.StringVar(&listen, "listen", "0.0.0.0:80", "Address and port to listen on")
 	flag.StringVar(&configFile, "config", "", "Config file to read settings from")
 	flag.StringVar(&statusFile, "status-file", "", "File to save runtime status to")
 	flag.StringVar(&setuid, "setuid", "", "Switch to user after opening socket")
+	flag.BoolVar(&showVersion, "version", false, "show the version and exit")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Fprintln(os.Stdout, os.Args[0], flywheel.GetVersion())
+		return
+	}
 
 	sock, err := net.Listen("tcp", listen)
 	if err != nil {

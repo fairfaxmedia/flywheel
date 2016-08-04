@@ -9,18 +9,20 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
+type Status uint
+
 // Different state of the systems
 const (
-	STOPPED = iota
+	STOPPED Status = iota
 	STARTING
 	STARTED
 	STOPPING
 	UNHEALTHY
 )
 
-// StatusString - Working with integer statuses is mostly better, but it's
+// String - Working with integer statuses is mostly better, but it's
 // occasionally necessary to output the status name.
-func StatusString(n int) string {
+func (n Status) String() string {
 	switch n {
 	case STOPPED:
 		return "STOPPED"
@@ -39,7 +41,7 @@ func StatusString(n int) string {
 
 // HealthWatcher - Check the status of the instances. Currently checks if they are "ready"; all
 // stopped or all started. Will need to be extended to determine actual status.
-func (fw *Flywheel) HealthWatcher(out chan<- int) {
+func (fw *Flywheel) HealthWatcher(out chan<- Status) {
 	out <- fw.CheckAll()
 
 	ticker := time.NewTicker(fw.hcInterval)
@@ -53,7 +55,7 @@ func (fw *Flywheel) HealthWatcher(out chan<- int) {
 
 // CheckAll - check asg/instance state
 // TODO - add more information what is unhealthy
-func (fw *Flywheel) CheckAll() int {
+func (fw *Flywheel) CheckAll() Status {
 	health := make(map[string]int)
 
 	err := fw.checkInstances(health)
@@ -173,6 +175,8 @@ func (fw *Flywheel) checkStoppedAutoScalingGroups(health map[string]int) error {
 			}
 		}
 
+		// if all instances are running and ASG is suspended
+		// resume the group
 		if running && len(group.SuspendedProcesses) > 0 {
 			for _, instance := range group.Instances {
 				fw.autoscaling.SetInstanceHealth(

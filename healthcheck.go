@@ -175,6 +175,8 @@ func (fw *Flywheel) checkStoppedAutoScalingGroups(health map[string]int) error {
 			}
 		}
 
+		// if all instances are running and ASG is suspended
+		// resume the group
 		if running && len(group.SuspendedProcesses) > 0 {
 			for _, instance := range group.Instances {
 				fw.autoscaling.SetInstanceHealth(

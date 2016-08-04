@@ -94,7 +94,7 @@ func (fw *Flywheel) Spin() {
 			fw.Poll()
 		case status := <-hchan:
 			if fw.status != status {
-				log.Printf("Healthcheck - status is now %v", status)
+				log.Printf("Healthcheck - status changed from %v to %v", fw.status, status)
 				// Status may change from STARTED to UNHEALTHY to STARTED due
 				// to things like AWS RequestLimitExceeded errors.
 				// If there is an active timeout, keep it instead of resetting.

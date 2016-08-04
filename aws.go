@@ -53,7 +53,7 @@ func (fw *Flywheel) startInstances() error {
 func (fw *Flywheel) unterminateAutoScaling() error {
 	var err error
 	for groupName, size := range fw.config.AutoScaling.Terminate {
-		log.Printf("Restoring autoscaling group %s", groupName)
+		log.Printf("Restoring autoscaling group %s to max/min size of %d", groupName, size)
 		_, err = fw.autoscaling.UpdateAutoScalingGroup(
 			&autoscaling.UpdateAutoScalingGroupInput{
 				AutoScalingGroupName: &groupName,

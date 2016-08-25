@@ -1,2 +1,4 @@
 AUTHORS
 bin/flywheel
+
+dist/*/usr/*

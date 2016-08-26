@@ -1,4 +1,4 @@
 AUTHORS
 bin/flywheel
-
 dist/*/usr/*
+dist/*.deb

@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
+// Status keeps track of the status
 type Status uint
 
 // Different state of the systems

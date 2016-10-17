@@ -5,10 +5,10 @@ import (
 	"fmt"
 )
 
-// The git commit that was compiled. This will be filled in by the compiler.
+// GitCommit - The git commit that was compiled. This will be filled in by the compiler.
 var GitCommit string
 
-// Version shoul be overwritten via Makefile
+// Version should be overwritten via Makefile
 const Version = "0.2.0"
 
 // VersionInfo stores version and GitCommit SHA

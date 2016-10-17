@@ -1,0 +1,19 @@
+{
+  "healthcheck-interval": "1m",
+  "idle-timeout": "3h",
+  "endpoint": "akamai-ets.my-environator.ucms.f2.com.au",
+  "vhosts": {
+    "author.my-environator.ucms.f2.com.au": "azcmsdau012a.dynamic.f2.com.au"
+  },
+  "instances": [
+    "i-example",
+  ],
+  "autoscaling": {
+    "terminate": {
+      "my-safe-scaling-group": 2
+    },
+    "stop": [
+      "my-unsafe-scaling-group"
+    ]
+  }
+}

@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
+// Status keeps track of the status
 type Status uint
 
 // Different state of the systems
@@ -136,6 +137,10 @@ func (fw *Flywheel) checkStoppedAutoScalingGroups(health map[string]int) error {
 	var err error
 	var awsGroupNames []*string
 
+	if len(fw.config.AutoScaling.Stop) == 0 {
+		return nil
+	}
+
 	for _, groupName := range fw.config.AutoScaling.Stop {
 		awsGroupNames = append(awsGroupNames, &groupName)
 	}
@@ -146,7 +151,6 @@ func (fw *Flywheel) checkStoppedAutoScalingGroups(health map[string]int) error {
 		},
 	)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 

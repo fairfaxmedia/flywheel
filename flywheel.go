@@ -13,8 +13,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 )
 
-// How often flywheel will update its internal state and/or check for idle
-// timeouts
+// SpinINTERVAL determines how often flywheel will update its
+// internal state and/or check for idle timeouts
 const SpinINTERVAL = time.Second
 
 // Ping - HTTP requests "ping" the flywheel goroutine. This updates the idle timeout,

@@ -147,7 +147,6 @@ func (fw *Flywheel) checkStoppedAutoScalingGroups(health map[string]int) error {
 		},
 	)
 	if err != nil {
-		log.Print(err)
 		return err
 	}
 

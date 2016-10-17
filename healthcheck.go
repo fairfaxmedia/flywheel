@@ -137,6 +137,10 @@ func (fw *Flywheel) checkStoppedAutoScalingGroups(health map[string]int) error {
 	var err error
 	var awsGroupNames []*string
 
+	if len(fw.config.AutoScaling.Stop) == 0 {
+		return nil
+	}
+
 	for _, groupName := range fw.config.AutoScaling.Stop {
 		awsGroupNames = append(awsGroupNames, &groupName)
 	}

@@ -49,7 +49,7 @@ for d in $(ls); do
     flywheel --version ${VERSION} \
     --iteration ${d}-${DEB_INTERATION} \
     --license "Apache-2.0" \
-    --maintainer "dejan.golja@fairfaxmeia.com.au" \
+    --maintainer "dejan.golja@fairfaxmedia.com.au" \
     --url "https://github.com/fairfaxmedia/flywheel" \
     --description "HTTP proxy for AWS cost control" .
   cd ..

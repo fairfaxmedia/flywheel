@@ -1,0 +1,8 @@
+Package: flywheel
+Version: 2.0
+Section: base
+Priority: optional
+Architecture: all
+Maintainer: Fairfax Media <joel.cumberland@fairfaxmedia.com.au>
+Description: Flywheel
+ Flywheel is a HTTP proxy which starts and stops EC2 instances sitting behind it.

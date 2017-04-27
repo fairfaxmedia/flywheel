@@ -89,6 +89,7 @@ func (handler *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	defer resp.Body.Close()
 
 	for key, value := range resp.Header {
 		w.Header()[key] = value
